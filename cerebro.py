@@ -4,6 +4,8 @@ from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama 
 from langchain_core.messages import SystemMessage, HumanMessage
 
+load_dotenv(os.path.dirname(__file__) + "/api_key.env")
+
 llm_nube = ChatOpenAI(
     base_url="https://api.groq.com/openai/v1", 
     api_key=os.getenv("GROQ_API_KEY"),
