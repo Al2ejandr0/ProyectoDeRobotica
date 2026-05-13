@@ -12,4 +12,6 @@ export PYENV_ROOT="$HOME/.pyenv"
 eval "$(pyenv init -)"
 pyenv install 3.11.9
 cd "$PYENV_ROOT/versions/3.11.9/bin"
-./python pip install mediapipe==0.10.11 vosk pyaudio pyttsx3 opencv-python
+./python pip install mediapipe==0.10.11 vosk pyaudio pyttsx3 opencv-python langchain
+curl -fsSL https://ollama.com/install.sh | bash
+ollama run llama3.2:1b
