@@ -5,14 +5,17 @@ import voz_y_oido
 from VISION import DetectorRostro 
 from cerebro import cerebro_hero
 from voz_y_oido import hablar, limpiar_texto, inicializar_oido, ia_hablando
+#Call all the files in order to run correctly
 
 detector = DetectorRostro() 
 cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+#The screen resolution of the face detection interface is handled
 
 rec, stream, p = inicializar_oido()
 
+#Definition of States
 estado = "ANALIZANDO"
 tiempo_inicio_analisis = 0
 tiempo_bloqueo_busqueda = 0 
@@ -21,11 +24,14 @@ while cap.isOpened():
     ret, frame = cap.read()
     if not ret: break
 
+#Concurrent vision processing: Face detection and gesture recognition
     rostros_detectados, gesto_detectado = detector.procesar_frame(frame)
     ahora = time.time()
 
     if rostros_detectados:
         if estado == "ANALIZANDO":
+            
+           #Analysis of the 5-second user for initialization
             if ahora > tiempo_bloqueo_busqueda:
                 if tiempo_inicio_analisis == 0: tiempo_inicio_analisis = ahora
                 progreso = int(ahora - tiempo_inicio_analisis)
@@ -35,9 +41,11 @@ while cap.isOpened():
                     estado = "PREGUNTANDO_INICIO"
                     rec.Reset()
     else:
+        #State reset if eye contact is lost
         estado = "ANALIZANDO"
         tiempo_inicio_analisis = 0
 
+#Active listening when not speaking
     frase = ""
     if not voz_y_oido.ia_hablando and rostros_detectados:
         if stream.get_read_available() > 0:
@@ -46,6 +54,7 @@ while cap.isOpened():
                 frase = limpiar_texto(json.loads(rec.Result())['text'])
                 if frase: print(f"Escuchado: {frase}")
 
+    #Voice and Gesture Understanding
     if estado == "PREGUNTANDO_INICIO":
         if "si" in frase or gesto_detectado == "si":
             hablar("Excelente. ¿De qué quieres hablar? Opción 1: Venezuela. Opción 2: Sobre mí. Opción 3: Salir.")
@@ -58,10 +67,10 @@ while cap.isOpened():
         elif frase != "":   
             hablar(cerebro_hero(frase))
 
+   #Menu Control
     elif estado == "MENU_PRINCIPAL":
         if any(k in frase for k in ["uno", "1", "venezuela"]):
             hablar("Venezuela es un país hermoso. Pronto te contaré más sobre su historia.")
-            # Aquí podrías saltar a un estado de cultura si lo deseas
         elif any(k in frase for k in ["dos", "2", "conocerte", "ti"]):
             hablar("¡Claro! Selecciona: Opción A para saber quién soy, Opción B para conocer a los integrantes, u Opción C para conocer mi propósito.")
             estado = "SUB_MENU_CONOCEME"
@@ -120,9 +129,11 @@ while cap.isOpened():
         elif frase != "": 
             hablar(cerebro_hero(frase))
 
+# GUI Rendering and safe program termination
     cv2.imshow('Hero IA - WRO 2026', frame)
     if cv2.waitKey(1) & 0xFF == ord('q'): break
 
+#Resource deallocation and hardware stream shutdown
 cap.release()
 cv2.destroyAllWindows()
 stream.stop_stream()
