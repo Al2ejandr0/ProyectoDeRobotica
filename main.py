@@ -5,33 +5,32 @@ import voz_y_oido
 from VISION import DetectorRostro 
 from cerebro import cerebro_hero
 from voz_y_oido import hablar, limpiar_texto, inicializar_oido, ia_hablando
-#Call all the files in order to run correctly
+from BaseDeDatos import buscar_informacion
+"""Call all the files in order to run correctly"""
 
 detector = DetectorRostro() 
 cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-#The screen resolution of the face detection interface is handled
+"""The screen resolution of the face detection interface is handled"""
 
 rec, stream, p = inicializar_oido()
 
-#Definition of States
 estado = "ANALIZANDO"
 tiempo_inicio_analisis = 0
 tiempo_bloqueo_busqueda = 0 
+"""Definition of States"""
 
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret: break
 
-#Concurrent vision processing: Face detection and gesture recognition
     rostros_detectados, gesto_detectado = detector.procesar_frame(frame)
     ahora = time.time()
+    """Concurrent vision processing: Face detection and gesture recognition"""
 
     if rostros_detectados:
         if estado == "ANALIZANDO":
-            
-           #Analysis of the 5-second user for initialization
             if ahora > tiempo_bloqueo_busqueda:
                 if tiempo_inicio_analisis == 0: tiempo_inicio_analisis = ahora
                 progreso = int(ahora - tiempo_inicio_analisis)
@@ -40,12 +39,12 @@ while cap.isOpened():
                     hablar("¡Hola!. ¿Te gustaría hablar conmigo?")
                     estado = "PREGUNTANDO_INICIO"
                     rec.Reset()
+            """Analysis of the 5-second user for initialization"""
     else:
-        #State reset if eye contact is lost
         estado = "ANALIZANDO"
         tiempo_inicio_analisis = 0
+    """State reset if eye contact is lost"""
 
-#Active listening when not speaking
     frase = ""
     if not voz_y_oido.ia_hablando and rostros_detectados:
         if stream.get_read_available() > 0:
@@ -53,8 +52,8 @@ while cap.isOpened():
             if rec.AcceptWaveform(data):
                 frase = limpiar_texto(json.loads(rec.Result())['text'])
                 if frase: print(f"Escuchado: {frase}")
+    """Active listening when not speaking"""
 
-    #Voice and Gesture Understanding
     if estado == "PREGUNTANDO_INICIO":
         if "si" in frase or gesto_detectado == "si":
             hablar("Excelente. ¿De qué quieres hablar? Opción 1: Venezuela. Opción 2: Sobre mí. Opción 3: Salir.")
@@ -66,8 +65,8 @@ while cap.isOpened():
             tiempo_bloqueo_busqueda = ahora + 5
         elif frase != "":   
             hablar(cerebro_hero(frase))
+        """Voice and Gesture Understanding"""
 
-   #Menu Control
     elif estado == "MENU_PRINCIPAL":
         if any(k in frase for k in ["uno", "1", "venezuela"]):
             hablar("Venezuela es un país hermoso. Pronto te contaré más sobre su historia.")
@@ -81,6 +80,7 @@ while cap.isOpened():
             tiempo_bloqueo_busqueda = ahora + 4
         elif frase != "": 
             hablar(cerebro_hero(frase))
+        """Menu Control"""
 
     elif estado == "SUB_MENU_CONOCEME":
         if any(k in frase for k in ["a", "quien eres", "opcion 1", "hero"]):
@@ -94,7 +94,6 @@ while cap.isOpened():
                 "presentados en nuestra categoría."
             )
             estado = "PREGUNTANDO_CONTINUAR"
-
         elif any(k in frase for k in ["b", "integrantes", "opcion 2", "creadores", "dos", "quienes te hicieron o te costruyecron"]):
             hablar(
                 "Excelente, buena pregunta. Para mi construcción estuvieron presentes tres integrantes en especial, "
@@ -107,7 +106,6 @@ while cap.isOpened():
                 "en desarrollar lo que es mi cerebro, es decir, la IA y la implementación de esta en mis componentes."
             )
             estado = "PREGUNTANDO_CONTINUAR"
-
         elif any(k in frase for k in ["c", "proposito", "opcion 3", "mision"]):
             hablar(
                 "Busco crear experiencias memorables para quienes exploran la historia y cultura venezolana. "
@@ -115,10 +113,8 @@ while cap.isOpened():
                 "interés global por nuestra identidad a través de una narrativa que conecta el pasado con lo que somos hoy."
             )
             estado = "PREGUNTANDO_CONTINUAR"
-
         elif any(k in frase for k in ["salir", "volver"]):
             estado = "MENU_PRINCIPAL"
-
     elif estado == "PREGUNTANDO_CONTINUAR":
         if "si" in frase or gesto_detectado == "si":
             hablar("¿Deseas saber algo más sobre nosotros? Puedes elegir la opción A, B o C.")
@@ -129,12 +125,12 @@ while cap.isOpened():
         elif frase != "": 
             hablar(cerebro_hero(frase))
 
-# GUI Rendering and safe program termination
     cv2.imshow('Hero IA - WRO 2026', frame)
     if cv2.waitKey(1) & 0xFF == ord('q'): break
+"""GUI Rendering and safe program termination"""
 
-#Resource deallocation and hardware stream shutdown
 cap.release()
 cv2.destroyAllWindows()
 stream.stop_stream()
 p.terminate()
+"""Resource deallocation and hardware stream shutdown"""
