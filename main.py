@@ -33,8 +33,8 @@ while cap.isOpened():
             if ahora > tiempo_bloqueo_busqueda:
                 if tiempo_inicio_analisis == 0: tiempo_inicio_analisis = ahora
                 progreso = int(ahora - tiempo_inicio_analisis)
-                cv2.putText(frame, f"ESCANEANDO ROSTRO: {progreso}s/5s", (50, 50), 1, 2, (0, 255, 255), 2)
-                if progreso >= 5:
+                cv2.putText(frame, f"ESCANEANDO ROSTRO: {progreso}s/2s", (50, 50), 1, 2, (0, 255, 255), 2)
+                if progreso >= 2:
                     hablar("¡Hola!. ¿Te gustaría hablar conmigo?")
                     estado = "PREGUNTANDO_INICIO"
                     rec.Reset()
