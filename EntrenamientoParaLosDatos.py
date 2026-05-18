@@ -1,6 +1,6 @@
 import os
 from langchain_community.document_loaders import TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter # IMPORTANTE
+from langchain_text_splitters import RecursiveCharacterTextSplitter 
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
@@ -17,12 +17,12 @@ def cargar_y_entrenar_archivo(ruta_txt):
     if not os.path.exists(ruta_txt):
         print(f"Error: El archivo {ruta_txt} no existe.")
         return
-    """It reads the files, and if they don't exist, it gives an error and stops the process."""
+    """It reads the files, and if they don't exist, it gives an error and stops the process"""
 
-    # 1. Leer el archivo
+
     loader = TextLoader(ruta_txt, encoding="utf-8")
     documentos = loader.load()
-    """Upload the document, using UTF-8 encoding to avoid errors with accented characters."""
+    """Upload the document, using UTF-8 encoding to avoid errors with accented characters"""
 
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     fragmentos = text_splitter.split_documents(documentos)
@@ -34,5 +34,5 @@ def cargar_y_entrenar_archivo(ruta_txt):
     """It helps to divide the text into different fragments"""
 
 if __name__ == "__main__":
-    cargar_y_entrenar_archivo("C:\Users\DELL\Documents\Python\WRO2026\INFO\cosa.txt")
-"""Add the file path to read it"""
+    cargar_y_entrenar_archivo(r"C:\Users\DELL\Documents\Python\WRO2026\INFO\cosa.txt")
+    """Add the file path to read it"""

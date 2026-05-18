@@ -13,9 +13,8 @@ def buscar_informacion(consulta):
         db = Chroma(persist_directory=DB_PATH, embedding_function=embeddings)
         resultados = db.similarity_search(consulta, k=3)
         """Search, compare and retrieve the vectors and take the 3 most similar fragments"""
-
         return "\n".join([doc.page_content for doc in resultados])
+   
     except Exception as e:
         print(f"Error de base de datos: {e}")
-        return ""
-"""It is responsible for the process of searching for information and sending it to the brain (AI)"""
+    return ""

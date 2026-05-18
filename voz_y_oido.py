@@ -9,7 +9,6 @@ import json
 
 ia_hablando = False 
 ultimo_tiempo_voz = time.time() 
-"""audio capture and text processing"""
 
 def proceso_hablar(texto):
     global ia_hablando, ultimo_tiempo_voz
@@ -26,19 +25,21 @@ def proceso_hablar(texto):
     time.sleep(1.0) 
     """Delay to prevent them from responding to themselves and avoid loops"""
 
+
     ia_hablando = False
 
 def hablar(texto):
     print(f"Hero: {texto}")
     hilo_voz = threading.Thread(target=proceso_hablar, args=(texto,))
     hilo_voz.start()
-"""Transform what is said into text in the terminal and start speech synthesis in a separate thread"""
+    """Transform what is said into text in the terminal and start speech synthesis in a separate thread"""
 
 def limpiar_texto(texto):
     if not texto: return ""
     return ''.join(c for c in unicodedata.normalize('NFD', texto)
                   if unicodedata.category(c) != 'Mn').lower()
 """Remove accents and standardize lowercase letters"""
+
 
 def inicializar_oido():
     if not os.path.exists("model"):

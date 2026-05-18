@@ -27,8 +27,9 @@ def cerebro_hero(pregunta_usuario):
         "Fuiste creada por Alejandro Guiñán, Kamila Gómez y Alejandro González. "
         f"Información de apoyo si es relevante: {datos_encontrados}. " 
         "Responde de forma breve y amable con identidad venezolana."
-    """'System Prompt' Establishes the robot's identity, creators, and tone of voice"""
     )
+    """'System Prompt' Establishes the robot's identity, creators, and tone of voice"""
+    
     mensajes = [
         SystemMessage(content=instrucciones), 
         HumanMessage(content=pregunta_usuario)
