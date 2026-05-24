@@ -6,8 +6,8 @@ from sdl3 import *
 from OpenGL.GL import *
 from PIL import Image
 
-SCREEN_WIDTH = 1024
-SCREEN_HEIGHT = 768
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 480
 
 class HeroUI:
     def __init__(self):
@@ -15,18 +15,21 @@ class HeroUI:
         self.window = None
         self.gl_context = None
         self.font = None
-        self.bot_texture = None
-        self.bot_w = 0
-        self.bot_h = 0
-        self.backbtn_texture = None
-        self.backbtn_w = 0
-        self.backbtn_h = 0
         self.robot_data = {
             "x": 0.0, "y": 0.0, "theta": 0.0,
             "battery": 100, "status": "Disconnected"
         }
         self.data_lock = threading.Lock()
         self.active_buttons = {}
+        self.current_page = "HOME"
+
+        self.bot_texture = None
+        self.bot_w = 0
+        self.bot_h = 0
+
+        self.backbtn_texture = None
+        self.backbtn_w = 0
+        self.backbtn_h = 0
 
     def load_texture(self, path):
         try:
@@ -57,6 +60,51 @@ class HeroUI:
         glTexCoord2f(0.0, 0.0); glVertex2f(x_start, y_end)
         glEnd()
         glDisable(GL_TEXTURE_2D)
+
+    def render_text_to_opengl(self, text, x, y, color):
+        if not self.font:
+            return
+
+        text_bytes = text.encode('utf-8')
+        text_surface = TTF_RenderText_Blended(self.font, text_bytes, len(text_bytes), color)
+        if not text_surface:
+            return
+
+        surf = text_surface.contents
+        
+        texture_id = GLuint()
+        glGenTextures(1, byref(texture_id))
+        glBindTexture(GL_TEXTURE_2D, texture_id)
+        
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, surf.pitch // 4) 
+        
+        pixels_pointer = cast(surf.pixels, c_void_p)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surf.w, surf.h, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixels_pointer)
+
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0)
+
+        glEnable(GL_TEXTURE_2D)
+        glBegin(GL_QUADS)
+        
+        x_start = (x / SCREEN_WIDTH) * 2.0 - 1.0
+        y_start = 1.0 - (y / SCREEN_HEIGHT) * 2.0
+        x_end = ((x + surf.w) / SCREEN_WIDTH) * 2.0 - 1.0
+        y_end = 1.0 - ((y + surf.h) / SCREEN_HEIGHT) * 2.0
+
+        glTexCoord2f(0.0, 0.0); glVertex2f(x_start, y_start)
+        glTexCoord2f(1.0, 0.0); glVertex2f(x_end, y_start)
+        glTexCoord2f(1.0, 1.0); glVertex2f(x_end, y_end)
+        glTexCoord2f(0.0, 1.0); glVertex2f(x_start, y_end)
+        
+        glEnd()
+        glDisable(GL_TEXTURE_2D)
+
+        glDeleteTextures(1, byref(texture_id))
+        SDL_DestroySurface(text_surface)
 
     def render_button(self, button_id, text, x, y, w, h, bg_color, text_color):
         glDisable(GL_TEXTURE_2D)
@@ -187,8 +235,9 @@ class HeroUI:
         self.window = SDL_CreateWindow(
             b"HERO Robot Control Center",
             SCREEN_WIDTH, SCREEN_HEIGHT,
-            SDL_WINDOW_OPENGL
+            SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS
         )
+        SDL_SetWindowPosition(self.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED)
         
         if not self.window:
             print(f"Error al crear la ventana: {SDL_GetError().decode()}", file=sys.stderr)
@@ -215,18 +264,20 @@ class HeroUI:
 
         return True
 
+    def set_ui_data(self, data_name : str, data):
+        self.robot_data[data_name] = data
+
+    def set_ui_page(self, page : str):
+        self.current_page = page
+
+    def send_robot_command(self, command):
+        print(f"Comando enviado: {command}")
+
     def handle_events(self):
         event = SDL_Event()
         while SDL_PollEvent(byref(event)):
             if event.type == SDL_EVENT_QUIT:
                 self.running = False
-                
-            elif event.type == SDL_EVENT_KEY_DOWN:
-                key = event.key.scancode
-                if key == SDL_SCANCODE_ESCAPE:
-                    self.running = False
-                elif key == SDL_SCANCODE_UP:
-                    self.send_robot_command("MOVE_FORWARD")
                     
             elif event.type == SDL_EVENT_WINDOW_RESIZED:
                 global SCREEN_WIDTH, SCREEN_HEIGHT
@@ -234,68 +285,14 @@ class HeroUI:
                 SCREEN_HEIGHT = event.window.data2
                 glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 
-            if self.update_button_state(event, "btn_connect", 20, 120, 200, 50):
-                if event.type in (SDL_EVENT_MOUSE_BUTTON_UP, SDL_EVENT_FINGER_UP):
+            if self.current_page == "HOME":
+                if self.update_button_state(event, "btn_connect", 20, 120, 200, 50) \
+                and event.type in (SDL_EVENT_MOUSE_BUTTON_UP, SDL_EVENT_FINGER_UP):
                     self.send_robot_command("CONNECT_CLICKED")
 
-            if self.update_button_state(event, "btn_back", 8, SCREEN_HEIGHT - self.backbtn_h - 8, self.backbtn_w, self.backbtn_h):
-                if event.type in (SDL_EVENT_MOUSE_BUTTON_UP, SDL_EVENT_FINGER_UP):
+                if self.update_button_state(event, "btn_back", 16, SCREEN_HEIGHT - self.backbtn_h - 16, self.backbtn_w, self.backbtn_h) \
+                and event.type in (SDL_EVENT_MOUSE_BUTTON_UP, SDL_EVENT_FINGER_UP):
                     self.send_robot_command("BACK_CLICKED")
-
-    def send_robot_command(self, command):
-        print(f"Comando enviado: {command}")
-
-    def network_thread_loop(self):
-        while self.running:
-            with self.data_lock:
-                self.robot_data["battery"] = max(0, self.robot_data["battery"] - 1)
-                self.robot_data["status"] = "Connected"
-            time.sleep(1.0)
-
-    def render_text_to_opengl(self, text, x, y, color):
-        if not self.font:
-            return
-
-        text_bytes = text.encode('utf-8')
-        text_surface = TTF_RenderText_Blended(self.font, text_bytes, len(text_bytes), color)
-        if not text_surface:
-            return
-
-        surf = text_surface.contents
-        
-        texture_id = GLuint()
-        glGenTextures(1, byref(texture_id))
-        glBindTexture(GL_TEXTURE_2D, texture_id)
-        
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-        
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, surf.pitch // 4) 
-        
-        pixels_pointer = cast(surf.pixels, c_void_p)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surf.w, surf.h, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixels_pointer)
-
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0)
-
-        glEnable(GL_TEXTURE_2D)
-        glBegin(GL_QUADS)
-        
-        x_start = (x / SCREEN_WIDTH) * 2.0 - 1.0
-        y_start = 1.0 - (y / SCREEN_HEIGHT) * 2.0
-        x_end = ((x + surf.w) / SCREEN_WIDTH) * 2.0 - 1.0
-        y_end = 1.0 - ((y + surf.h) / SCREEN_HEIGHT) * 2.0
-
-        glTexCoord2f(0.0, 0.0); glVertex2f(x_start, y_start)
-        glTexCoord2f(1.0, 0.0); glVertex2f(x_end, y_start)
-        glTexCoord2f(1.0, 1.0); glVertex2f(x_end, y_end)
-        glTexCoord2f(0.0, 1.0); glVertex2f(x_start, y_end)
-        
-        glEnd()
-        glDisable(GL_TEXTURE_2D)
-
-        glDeleteTextures(1, byref(texture_id))
-        SDL_DestroySurface(text_surface)
 
     def render(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -303,11 +300,14 @@ class HeroUI:
         white_color = SDL_Color(255, 255, 255, 255)
         btn_bg = SDL_Color(50, 120, 220, 255)
 
-        if self.bot_texture:
-            self.render_texture(self.bot_texture, 400, 100, self.bot_w, self.bot_h)
+        if self.current_page == "HOME":
+            if self.bot_texture:
+                self.render_texture(self.bot_texture, 400, 100, self.bot_w, self.bot_h)
 
-        if self.backbtn_texture:
-            self.render_texture(self.backbtn_texture, 8, SCREEN_HEIGHT - self.backbtn_h - 8, self.backbtn_w, self.backbtn_h)
+            if self.backbtn_texture:
+                self.render_texture(self.backbtn_texture, 16, SCREEN_HEIGHT - self.backbtn_h - 16, self.backbtn_w, self.backbtn_h)
+
+            self.render_button("btn_connect", "CONECTAR", 20, 120, 200, 50, btn_bg, white_color)
 
         with self.data_lock:
             status_text = f"Estado: {self.robot_data['status']}"
@@ -316,16 +316,11 @@ class HeroUI:
         self.render_text_to_opengl(status_text, 20, 20, white_color)
         self.render_text_to_opengl(battery_text, 20, 60, white_color)
 
-        self.render_button("btn_connect", "CONECTAR", 20, 120, 200, 50, btn_bg, white_color)
-
         SDL_GL_SwapWindow(self.window)
 
     def run(self):
         if not self.init_sdl_opengl():
             return
-
-        net_thread = threading.Thread(target=self.network_thread_loop, daemon=True)
-        net_thread.start()
 
         while self.running:
             self.handle_events()
@@ -338,6 +333,9 @@ class HeroUI:
         
         if self.bot_texture:
             glDeleteTextures(1, byref(self.bot_texture))
+        
+        if self.backbtn_texture:
+            glDeleteTextures(1, byref(self.backbtn_texture))
 
         SDL_GL_DestroyContext(self.gl_context)
         SDL_DestroyWindow(self.window)

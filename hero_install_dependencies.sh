@@ -12,9 +12,11 @@ export PYENV_ROOT="$HOME/.pyenv"
 eval "$(pyenv init -)"
 pyenv install 3.11.9
 cd "$PYENV_ROOT/versions/3.11.9/bin"
+./python pip uninstall protobuf urllib3
 ./python pip install mediapipe==0.10.11 vosk pyaudio pyttsx3 opencv-python \
 langchain langchain_openai langchain_ollama langchain_huggingface python-dotenv \
-chromadb langchain-community sentence-transformers PyOpenGL PyOpenGL_accelerate PySDL3
+chromadb langchain-community sentence-transformers PyOpenGL PyOpenGL_accelerate PySDL3 \
+"protobuf>=3.20.3,<4.21.0" "urllib3<2.0"
 curl -fsSL https://ollama.com/install.sh | sh
 sudo systemctl start ollama.service
 ollama run llama3.2:1b
