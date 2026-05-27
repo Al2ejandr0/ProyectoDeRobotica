@@ -1,6 +1,7 @@
 /.vscode/
-/build/
 /__pycache__/
-/hero_ui
 /*.zip
 /*.env
+/*.blend*
+/model_cache/
+/*.wav
