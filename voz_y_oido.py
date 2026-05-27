@@ -1,56 +1,48 @@
-import pyttsx3
+import subprocess
+import os
+import threading
 import pyaudio
 import vosk
 import unicodedata
-import threading
-import time 
-import os  
-import json
+from piper import PiperVoice
+import wave
+import os
+import sounddevice as sd
+import numpy as np
 
-ia_hablando = False 
-ultimo_tiempo_voz = time.time() 
+# Configuración de rutas
+MODELO = "piper/es_ES-davefx-medium.onnx"
+CONFIG = "piper/es_ES-davefx-medium.onnx.json"
 
-def proceso_hablar(texto):
-    global ia_hablando, ultimo_tiempo_voz
-    ia_hablando = True
-    """Motor TTS (Text-to-Speech)"""
-
-    engine = pyttsx3.init()
-    engine.setProperty('rate', 165) 
-    """Audio speed of 165 for a more natural voice"""
-
-    engine.say(texto)
-    engine.runAndWait()
-    ultimo_tiempo_voz = time.time() 
-    time.sleep(1.0) 
-    """Delay to prevent them from responding to themselves and avoid loops"""
-
-
-    ia_hablando = False
+ia_hablando = False
+pausar_oido = threading.Event()
+voice = PiperVoice.load(MODELO, config_path=CONFIG)
 
 def hablar(texto):
-    print(f"Hero: {texto}")
-    hilo_voz = threading.Thread(target=proceso_hablar, args=(texto,))
-    hilo_voz.start()
-    """Transform what is said into text in the terminal and start speech synthesis in a separate thread"""
+    print(f"Hero dice: {texto}")
+    with wave.open("salida.wav", "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(22050)
+        voice.synthesize(texto, wav_file)
+
+    audio_data = []
+    for audio_bytes in voice.synthesize(texto):
+        int_data = np.frombuffer(audio_bytes.audio_int16_bytes, dtype=np.int16)
+        audio_data.append(int_data)
+    full_audio = np.concatenate(audio_data)
+    sd.play(full_audio, samplerate=22050)
+    sd.wait()
 
 def limpiar_texto(texto):
     if not texto: return ""
     return ''.join(c for c in unicodedata.normalize('NFD', texto)
-                  if unicodedata.category(c) != 'Mn').lower()
-"""Remove accents and standardize lowercase letters"""
-
+                   if unicodedata.category(c) != 'Mn').lower()
 
 def inicializar_oido():
-    if not os.path.exists("model"):
-        print("Error: Falta la carpeta 'model' de Vosk")
-        return None, None, None
-    """Offline language model verification and audio input flow configuration"""
-
     model = vosk.Model("model")
     rec = vosk.KaldiRecognizer(model, 16000)
     p = pyaudio.PyAudio()
     stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=4000)
     stream.start_stream()
     return rec, stream, p
-"""Start or activate the microphone for continuous listening"""

@@ -4,35 +4,54 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+
 DB_PATH = "./hero_knowledge_db"
-model_name = "sentence-transformers/all-MiniLM-L6-v2"
-embeddings = HuggingFaceEmbeddings(model_name=model_name)
-"""Words are transformed into numerical values ​​(vectors)"""
+
+def get_embeddings():
+    """Carga el modelo de forma local solo cuando se solicita."""
+    return HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2",
+        model_kwargs={'device': 'cpu'},
+        encode_kwargs={'normalize_embeddings': False},
+        cache_folder="./model_cache" 
+    )
 
 def inicializar_db():
-    return Chroma(persist_directory=DB_PATH, embedding_function=embeddings)
-"""Connect to or create the Chroma database using HuggingFace vectors"""
+    """Retorna la instancia de Chroma configurada."""
+    return Chroma(persist_directory=DB_PATH, embedding_function=get_embeddings())
 
 def cargar_y_entrenar_archivo(ruta_txt):
     if not os.path.exists(ruta_txt):
-        print(f"Error: El archivo {ruta_txt} no existe.")
+        print(f"⚠️ Error: El archivo {ruta_txt} no existe.")
         return
-    """It reads the files, and if they don't exist, it gives an error and stops the process"""
-
 
     loader = TextLoader(ruta_txt, encoding="utf-8")
     documentos = loader.load()
-    """Upload the document, using UTF-8 encoding to avoid errors with accented characters"""
-
+    
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     fragmentos = text_splitter.split_documents(documentos)
-    """It helps to divide the text into different fragments"""
 
     db = inicializar_db()
     db.add_documents(fragmentos) 
-    print(f"¡Hero ha leído {ruta_txt} y guardado {len(fragmentos)} fragmentos!")
-    """It helps to divide the text into different fragments"""
+    print(f"¡Hero ha leído {os.path.basename(ruta_txt)} y guardado {len(fragmentos)} fragmentos!")
 
 if __name__ == "__main__":
-    cargar_y_entrenar_archivo(r"C:\Users\DELL\Documents\Python\WRO2026\INFO\cosa.txt")
-    """Add the file path to read it"""
+    archivos_conocimiento = [
+        r"C:\Users\DELL\Downloads\curiosidades.txt",
+        r"C:\Users\DELL\Downloads\Leyendas.txt",
+        r"C:\Users\DELL\Downloads\personajes.txt",
+        r"C:\Users\DELL\Downloads\Naturaleza.txt",
+        r"C:\Users\DELL\Downloads\entretenimiento.txt",
+        r"C:\Users\DELL\Downloads\Cultura(1).txt"
+    ]
+    
+    print("🤖 [SISTEMA] Iniciando carga masiva de conocimientos para Hero (Modo Offline)...")
+    print("-" * 60)
+    
+    for archivo in archivos_conocimiento:
+        cargar_y_entrenar_archivo(archivo)
+        
+    print("-" * 60)
+    print("✅ ¡Base de datos vectorial generada y guardada localmente!")

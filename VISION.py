@@ -6,8 +6,8 @@ class DetectorRostro:
     def __init__(self):
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
-            min_detection_confidence=0.2, 
-            min_tracking_confidence=0.2   
+            min_detection_confidence=0.5, 
+            min_tracking_confidence=0.5   
     )
         """MediaPipe's Face Mesh model is launched to detect 468 facial points"""
         """Minimum threshold for initial detection"""

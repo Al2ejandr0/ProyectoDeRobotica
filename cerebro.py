@@ -1,51 +1,97 @@
 import os
+import socket
+import requests
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from langchain_ollama import ChatOllama 
-from langchain_core.messages import SystemMessage, HumanMessage
 from BaseDeDatos import buscar_informacion
-"""These libraries send AI models both locally and in the cloud so that ours can function in a hybrid way, and also help it to respond and send messages to the user"""
 
+# --- CONFIGURACIÓN ---
 load_dotenv(os.path.dirname(__file__) + "/api_key.env")
-"""Upload the API key from an external file for security and to avoid GitHub blocks"""
 
-llm_nube = ChatOpenAI(
-    base_url="https://api.groq.com/openai/v1", 
-    api_key=os.getenv("GROQ_API_KEY"),
-    model_name="llama-3.3-70b-versatile", 
-    timeout=5
-)
-"""This section is responsible for calling the group model using its key to activate it, so that when it needs to access data that it cannot find locally, it can search for data in the cloud"""
+def tiene_internet(host="8.8.8.8", port=53, timeout=1):
+    """Comprueba conexión de red."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(timeout)
+        s.connect((host, port))
+        s.close()
+        return True
+    except:
+        return False
 
-llm_local = ChatOllama(model="llama3.2:1b")
-"""Here the local model (ollama) is called to work in cases where there is no internet"""
+def llamar_a_ollama_local(mensajes):
+    """Función independiente para el respaldo local."""
+    try:
+        print("🏠 Nivel 2: Iniciando respaldo local (Ollama)...")
+        payload_local = {
+            "model": "llama3.2:1b",
+            "messages": mensajes,
+            "stream": False,
+            "options": {"num_ctx": 2048}
+        }
+        respuesta_local = requests.post(
+            "http://localhost:11434/api/chat",
+            json=payload_local,
+            timeout=20
+        )
+        respuesta_local.raise_for_status()
+        return respuesta_local.json()["message"]["content"]
+    except Exception as e:
+        print(f"❌ El cerebro local falló por -> {e}")
+        return "Disculpa, tuve un pequeño fallo en mis circuitos."
 
-def cerebro_hero(pregunta_usuario):
-    datos_encontrados = buscar_informacion(pregunta_usuario)
-    instrucciones = (
-        "Eres Hero, asistente de la cultura venezolana para la WRO 2026. "
-        "Fuiste creada por Alejandro Guiñán, Kamila Gómez y Alejandro González. "
-        f"Información de apoyo si es relevante: {datos_encontrados}. " 
-        "Responde de forma breve y amable con identidad venezolana."
-    )
-    """'System Prompt' Establishes the robot's identity, creators, and tone of voice"""
+def cerebro_hero(pregunta_usuario, db):
+    pregunta_min = pregunta_usuario.lower()
     
-    mensajes = [
-        SystemMessage(content=instrucciones), 
-        HumanMessage(content=pregunta_usuario)
-    ]
-    """Here, call the functions to be able to communicate the message to the user"""
+    es_interaccion_basica = any(palabra in pregunta_min for palabra in [
+        "chiste", "broma", "cuentame algo gracioso", "hola", "saludos", "buenos dias", "como estas"
+    ])
 
-    try: 
-        print("Usando Cerebro en la Nube")
-        resultado = llm_nube.invoke(mensajes)
-        return resultado.content
-    except Exception:
-        print("Internet fallido. Cambiando a Cerebro Local")
+    if es_interaccion_basica:
+        print("⚡ [FILTRO RÁPIDO] Interacción básica.")
+        datos_encontrados = ""
+    else:
+        print("🔍 [BASE DE DATOS] Buscando en archivos...")
+        datos_encontrados = buscar_informacion(pregunta_usuario, db)
+
+    instrucciones = (
+        "Eres Hero, un asistente cultural para el robot WRO 2026. "
+        "Responde breve (máximo 2 frases), amigable y con chispa venezolana. "
+    )
+    instrucciones += f"Usa estos datos: {datos_encontrados}" if datos_encontrados else "Usa tu conocimiento general."
+
+    mensajes = [
+        {"role": "system", "content": instrucciones},
+        {"role": "user", "content": pregunta_usuario}
+    ]
+
+    # --- CONTROL DE FLUJO INTELIGENTE ---
+    if tiene_internet():
         try:
-            resultado = llm_local.invoke(mensajes)
-            return resultado.content
-        except Exception as e_local:
-            print(f"Error local: {e_local}")
-            return "Panita, mis dos cerebros están ocupados. ¿Me repites?"
-"""Provides a local processing response if the cloud cannot be used when attempting to use it"""
+            print("🚀 Nivel 1: Conectando a la Nube (Groq)...")
+            headers = {
+                "Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": mensajes
+            }
+            
+            respuesta_nube = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=5
+            )
+            
+            if respuesta_nube.status_code == 200:
+                return respuesta_nube.json()["choices"][0]["message"]["content"]
+            else:
+                print(f"Error de Nube: {respuesta_nube.text}")
+                # Si falla, no retornamos nada aquí, dejamos que el código siga al Nivel 2
+                
+        except Exception as e:
+            print(f"⚠️ Nube falló: {e}")
+
+    # Si llegamos aquí, es porque la nube falló o no hubo internet
+    return llamar_a_ollama_local(mensajes)
