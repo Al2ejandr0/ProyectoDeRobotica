@@ -6,52 +6,57 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
-
 DB_PATH = "./hero_knowledge_db"
+"""Configures environment variables to ensure the model works offline"""
 
 def get_embeddings():
-    """Carga el modelo de forma local solo cuando se solicita."""
     return HuggingFaceEmbeddings(
         model_name="sentence-transformers/all-MiniLM-L6-v2",
         model_kwargs={'device': 'cpu'},
         encode_kwargs={'normalize_embeddings': False},
         cache_folder="./model_cache" 
     )
+"""Initializes the Embeddings model (transforms text into numerical vectors)"""
 
-def inicializar_db():
-    """Retorna la instancia de Chroma configurada."""
+def initialize_db():
     return Chroma(persist_directory=DB_PATH, embedding_function=get_embeddings())
+"""Returns the configured Chroma instance."""
 
-def cargar_y_entrenar_archivo(ruta_txt):
+def LoadAndTrainFile(ruta_txt):
     if not os.path.exists(ruta_txt):
-        print(f"⚠️ Error: El archivo {ruta_txt} no existe.")
+        print(f"Error: The file {ruta_txt} does not exist.")
         return
+    """Loads and processes selected .txt files, if they don't exist, it displays an error message"""
 
     loader = TextLoader(ruta_txt, encoding="utf-8")
-    documentos = loader.load()
+    documents = loader.load()
+    """Prevents errors or confusion with accents"""
     
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    fragmentos = text_splitter.split_documents(documentos)
+    fragments = text_splitter.split_documents(documents)
+    """Divides the text into fragments (chunks) for semantic search"""
 
-    db = inicializar_db()
-    db.add_documents(fragmentos) 
-    print(f"¡Hero ha leído {os.path.basename(ruta_txt)} y guardado {len(fragmentos)} fragmentos!")
+    db = initialize_db()
+    db.add_documents(fragments) 
+    print(f"Hero has read {os.path.basename(ruta_txt)} and saved {len(fragments)} fragments!")
+    """Reads and detects the selected .txt files"""
 
 if __name__ == "__main__":
-    archivos_conocimiento = [
+    knowledge_files = [
         r"C:\Users\DELL\Downloads\curiosidades.txt",
         r"C:\Users\DELL\Downloads\Leyendas.txt",
         r"C:\Users\DELL\Downloads\personajes.txt",
         r"C:\Users\DELL\Downloads\Naturaleza.txt",
         r"C:\Users\DELL\Downloads\entretenimiento.txt",
-        r"C:\Users\DELL\Downloads\Cultura(1).txt"
+        r"C:\Users\DELL\Downloads\Cultura(1).txt",
+        r"C:\Users\DELL\Downloads\proposito.txt",
+        r"C:\Users\DELL\Downloads\integrantes.txt",
+        r"C:\Users\DELL\Downloads\Info.txt"
     ]
-    
-    print("🤖 [SISTEMA] Iniciando carga masiva de conocimientos para Hero (Modo Offline)...")
+    print("Starting massive knowledge loading for Hero (Offline Mode)")
     print("-" * 60)
-    
-    for archivo in archivos_conocimiento:
-        cargar_y_entrenar_archivo(archivo)
-        
+    for files in knowledge_files:
+        LoadAndTrainFile(files)
     print("-" * 60)
-    print("✅ ¡Base de datos vectorial generada y guardada localmente!")
+    print("Vector database generated and saved locally")
+"""List of the different files included for the database"""

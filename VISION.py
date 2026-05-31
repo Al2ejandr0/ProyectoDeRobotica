@@ -14,25 +14,25 @@ class DetectorRostro:
         """Threshold to maintain tracking between frames"""
 
         self.mp_drawing = mp.solutions.drawing_utils
-        self.posiciones_historial = [     
+        self.history_positions = [     
         ]
         """Coordinate history for calculating kinematic displacements"""
 
-    def analizar_gesto(self, puntos_faciales):
-        nariz = puntos_faciales.landmark[1]
-        self.posiciones_historial.append((nariz.x, nariz.y)
+    def analyze_gesture(self, facial_points):
+        nariz = facial_points.landmark[1]
+        self.history_positions.append((nariz.x, nariz.y)
     )
         """Use the tip of your nose as the central reference point for the movement"""
 
-        if len(self.posiciones_historial) > 15: 
-            self.posiciones_historial.pop(0)
+        if len(self.history_positions) > 15: 
+            self.history_positions.pop(0)
         """Maintains a 15-frame sliding window for motion analysis"""
 
-        if len(self.posiciones_historial) < 15: 
+        if len(self.history_positions) < 15: 
             return None
 
-        xs = [p[0] for p in self.posiciones_historial]
-        ys = [p[1] for p in self.posiciones_historial]
+        xs = [p[0] for p in self.history_positions]
+        ys = [p[1] for p in self.history_positions]
         """Calculate the amplitude of the movement on the horizontal and vertical axes"""
 
         mov_x, mov_y = max(xs) - min(xs), max(ys) - min(ys)
@@ -40,8 +40,6 @@ class DetectorRostro:
         if mov_x > 0.05 and mov_x > mov_y: return "no"
         return None
     """Gesture classification logic based on the axis of greatest displacement"""
-
-    
     
     def procesar_frame(self, frame):
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -56,10 +54,7 @@ class DetectorRostro:
                     )
                     """Render the facial contour mesh over the original frame"""
 
-                    gesto = self.analizar_gesto(face_landmarks)
+                    gesto = self.analyze_gesture(face_landmarks)
                     """Execute the gesture recognition logic for the detected face"""
         
             return results.multi_face_landmarks, gesto
-    
-if __name__ == "__main__":
-    print("hola")

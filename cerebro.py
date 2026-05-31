@@ -2,13 +2,12 @@ import os
 import socket
 import requests
 from dotenv import load_dotenv
-from BaseDeDatos import buscar_informacion
+from BaseDeDatos import Search_Information
 
-# --- CONFIGURACIÓN ---
 load_dotenv(os.path.dirname(__file__) + "/api_key.env")
+"""Load environment variable for API Key"""
 
-def tiene_internet(host="8.8.8.8", port=53, timeout=1):
-    """Comprueba conexión de red."""
+def has_internet(host="8.8.8.8", port=53, timeout=1):
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(timeout)
@@ -17,81 +16,82 @@ def tiene_internet(host="8.8.8.8", port=53, timeout=1):
         return True
     except:
         return False
+    """Network connection check"""
 
-def llamar_a_ollama_local(mensajes):
-    """Función independiente para el respaldo local."""
+def call_local_ollama(messages):
     try:
-        print("🏠 Nivel 2: Iniciando respaldo local (Ollama)...")
+        print("Starting local backup (Ollama)...")
         payload_local = {
             "model": "llama3.2:1b",
-            "messages": mensajes,
+            "messages": messages,
             "stream": False,
             "options": {"num_ctx": 2048}
         }
-        respuesta_local = requests.post(
+        local_response = requests.post(
             "http://localhost:11434/api/chat",
             json=payload_local,
             timeout=20
         )
-        respuesta_local.raise_for_status()
-        return respuesta_local.json()["message"]["content"]
+        """Independent function for local backup"""
+        local_response.raise_for_status()
+        return local_response.json()["message"]["content"]
     except Exception as e:
-        print(f"❌ El cerebro local falló por -> {e}")
-        return "Disculpa, tuve un pequeño fallo en mis circuitos."
+        print(f"Local brain failed due to -> {e}")
+        return "Disculpa, tuve un pequeño fallo"
 
-def cerebro_hero(pregunta_usuario, db):
-    pregunta_min = pregunta_usuario.lower()
-    
-    es_interaccion_basica = any(palabra in pregunta_min for palabra in [
+def cerebro_hero(user_question, db):
+    min_question = user_question.lower()
+    """Chooses between database, cloud (Groq), or local (Ollama)"""
+
+    is_basic_interaction = any(word in min_question for word in [
         "chiste", "broma", "cuentame algo gracioso", "hola", "saludos", "buenos dias", "como estas"
     ])
+    """Simple interactions that do not require a database"""
 
-    if es_interaccion_basica:
-        print("⚡ [FILTRO RÁPIDO] Interacción básica.")
-        datos_encontrados = ""
+    if is_basic_interaction:
+        print("Basic interaction.")
+        found_data = ""
     else:
-        print("🔍 [BASE DE DATOS] Buscando en archivos...")
-        datos_encontrados = buscar_informacion(pregunta_usuario, db)
+        print("Searching in files (Database)")
+        found_data = Search_Information(user_question, db)
+        """Searches for information in the database if the question is not complex"""
 
-    instrucciones = (
-        "Eres Hero, un asistente cultural para el robot WRO 2026. "
-        "Responde breve (máximo 2 frases), amigable y con chispa venezolana. "
+    instructions = (
+        "You're Hero, a cultural assistant"
+        "Answer briefly, in a friendly way, with Venezuelan wit and charm"
     )
-    instrucciones += f"Usa estos datos: {datos_encontrados}" if datos_encontrados else "Usa tu conocimiento general."
-
-    mensajes = [
-        {"role": "system", "content": instrucciones},
-        {"role": "user", "content": pregunta_usuario}
+    instructions += f"Use this data: {found_data}" if found_data else "Use your general knowledge"
+    messages = [
+        {"role": "system", "content": instructions},
+        {"role": "user", "content": user_question}
     ]
-
-    # --- CONTROL DE FLUJO INTELIGENTE ---
-    if tiene_internet():
+    """Personality configuration"""
+    
+    if has_internet():
         try:
-            print("🚀 Nivel 1: Conectando a la Nube (Groq)...")
+            print("Internet connection (Groq)")
             headers = {
                 "Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}",
                 "Content-Type": "application/json"
             }
             payload = {
                 "model": "llama-3.3-70b-versatile",
-                "messages": mensajes
+                "messages": messages
             }
-            
-            respuesta_nube = requests.post(
+            cloud_response = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers=headers,
                 json=payload,
                 timeout=5
             )
+            """Checks connection to use the Groq API"""
             
-            if respuesta_nube.status_code == 200:
-                return respuesta_nube.json()["choices"][0]["message"]["content"]
+            if cloud_response.status_code == 200:
+                return cloud_response.json()["choices"][0]["message"]["content"]
             else:
-                print(f"Error de Nube: {respuesta_nube.text}")
-                # Si falla, no retornamos nada aquí, dejamos que el código siga al Nivel 2
-                
+                print(f"Cloud error: {cloud_response.text}")
         except Exception as e:
-            print(f"⚠️ Nube falló: {e}")
+            print(f"Cloud failed: {e}")
 
-    # Si llegamos aquí, es porque la nube falló o no hubo internet
-    return llamar_a_ollama_local(mensajes)
+    return call_local_ollama(messages)
+"""When it fails, it switches to the local ollama model"""
