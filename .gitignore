@@ -1,7 +1,8 @@
 /.vscode/
 /__pycache__/
+/model_cache/
+/hero_knowledge_db/
 /*.zip
 /*.env
 /*.blend*
-/model_cache/
 /*.wav

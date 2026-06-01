@@ -42,16 +42,17 @@ def LoadAndTrainFile(ruta_txt):
     """Reads and detects the selected .txt files"""
 
 if __name__ == "__main__":
+    path = os.path.dirname(os.path.abspath(__file__))
     knowledge_files = [
-        r"C:\Users\DELL\Downloads\curiosidades.txt",
-        r"C:\Users\DELL\Downloads\Leyendas.txt",
-        r"C:\Users\DELL\Downloads\personajes.txt",
-        r"C:\Users\DELL\Downloads\Naturaleza.txt",
-        r"C:\Users\DELL\Downloads\entretenimiento.txt",
-        r"C:\Users\DELL\Downloads\Cultura(1).txt",
-        r"C:\Users\DELL\Downloads\proposito.txt",
-        r"C:\Users\DELL\Downloads\integrantes.txt",
-        r"C:\Users\DELL\Downloads\Info.txt"
+        rf"{path}/INFO/curiosidades.txt",
+        rf"{path}/INFO/Leyendas.txt",
+        rf"{path}/INFO/personajes.txt",
+        rf"{path}/INFO/Naturaleza.txt",
+        rf"{path}/INFO/entretenimiento.txt",
+        rf"{path}/INFO/Cultura(1).txt",
+        rf"{path}/INFO/proposito.txt",
+        rf"{path}/INFO/integrantes.txt",
+        rf"{path}/INFO/Info.txt"
     ]
     print("Starting massive knowledge loading for Hero (Offline Mode)")
     print("-" * 60)
