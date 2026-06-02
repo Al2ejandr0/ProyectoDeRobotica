@@ -50,6 +50,7 @@ search_block_time = 0
 last_detection_time = 0
 WAIT_THRESHOLD = 5.0
 user_name = ""
+can_stop = True
 """Program execution states"""
 
 def speak_and_wait(text):
@@ -73,18 +74,19 @@ try:
 
         if faces_detected:
             last_detection_time = now
-            if movement_state == "MOVING":
-                print("Face detected: Sending Stop command (D).")
-                send_command('D') 
-                movement_state = "STOPPED_INTERACTION"
             
             if state == "ANALYZING" and now > search_block_time:
+                if can_stop and movement_state == "MOVING":
+                    print("Face detected: Sending Stop command (D).")
+                    send_command('D') 
+                    movement_state = "STOPPED_INTERACTION"
                 if analysis_start_time == 0: analysis_start_time = now
                 if (now - analysis_start_time) >= 2 and not voz_y_oido.ai_speaking:
                     speak_and_wait("Hola mucho gusto, soy Hero, ¿te gustaría conversar conmigo?")
                     state = "WAITING_ACCEPTANCE"
                     analysis_start_time = 0
         else:
+            can_stop = True
             if movement_state == "STOPPED_INTERACTION":
                 if (now - last_detection_time) > WAIT_THRESHOLD:
                     print("No faces for a long time: Sending Advance command (A).")
@@ -113,6 +115,10 @@ try:
                     speak_and_wait("Entendido, hasta luego.")
                     state = "ANALYZING"
                     search_block_time = now + 10
+                    print("Sending Advance command (A).")
+                    send_command('A') 
+                    movement_state = "MOVING"
+                    can_stop = False
             elif state == "WAITING_NAME":
                 parts = phrase.split()
                 user_name = parts[-1] if parts else "amigo"
@@ -123,7 +129,7 @@ try:
                 speak_and_wait(response)
                 """Flow and form of the program's conversation"""
 
-        cv2.imshow('Hero - WRO 2026', frame)
+        #cv2.imshow('Hero - WRO 2026', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'): break
 
 finally:
