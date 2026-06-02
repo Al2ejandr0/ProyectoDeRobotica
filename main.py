@@ -15,7 +15,7 @@ db = Open_DataBase()
 """Initialization process"""
 
 try:
-    arduino = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+    arduino = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
 except:
     arduino = None
     """Serial connection with the MegaPi"""
