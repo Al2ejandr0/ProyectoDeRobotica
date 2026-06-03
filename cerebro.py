@@ -16,7 +16,7 @@ def has_internet(host="8.8.8.8", port=53, timeout=1):
         return True
     except:
         return False
-    """Network connection check"""
+"""Network connection check"""
 
 def call_local_ollama(messages):
     try:
