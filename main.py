@@ -105,7 +105,11 @@ try:
             if any(word in phrase for word in ["adios", "chao", "hasta luego", "no quiero mas"]):
                 speak_and_wait("Entendido, fue un gusto conversar contigo. ¡Hasta pronto!")
                 state = "ANALYZING"
-                search_block_time = now + 10 
+                search_block_time = now + 10
+                print("Sending Advance command (A).")
+                send_command('A') 
+                movement_state = "MOVING"
+                can_stop = False 
                 continue
             if state == "WAITING_ACCEPTANCE":
                 if is_affirmative(phrase) or gesture_detected == "si":
