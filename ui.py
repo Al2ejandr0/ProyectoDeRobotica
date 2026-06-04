@@ -6,8 +6,8 @@ from sdl3 import *
 from OpenGL.GL import *
 from PIL import Image
 
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 480
+SCREEN_WIDTH = 1024
+SCREEN_HEIGHT = 600
 
 class HeroUI:
     def __init__(self):
@@ -17,7 +17,7 @@ class HeroUI:
         self.font = None
         self.robot_data = {
             "x": 0.0, "y": 0.0, "theta": 0.0,
-            "battery": 100, "status": "Disconnected"
+            "battery": 100, "status": "Iniciando..."
         }
         self.data_lock = threading.Lock()
         self.active_buttons = {}
