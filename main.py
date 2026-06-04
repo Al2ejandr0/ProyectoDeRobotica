@@ -1,12 +1,13 @@
 import threading  
+import time
 from ui import HeroUI
 
+time.sleep(4)
 ui = HeroUI()
 ui.running = True
 
 def main():
     import cv2
-    import time
     import json
     import serial  
     from VISION import DetectorRostro 
