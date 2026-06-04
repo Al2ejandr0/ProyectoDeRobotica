@@ -58,7 +58,7 @@ def speak_and_wait(text):
     speak(text)
     while voz_y_oido.ai_speaking:
         time.sleep(0.1)
-    time.sleep(0.3)
+    time.sleep(0.5)
     clean_audio(stream)
     rec.Reset()
     """Audio and buffer cleaning after speaking"""
@@ -98,9 +98,10 @@ try:
         phrase = ""
         if not voz_y_oido.pause_hearing.is_set() and stream.get_read_available() > 0:
             data = stream.read(2000, exception_on_overflow=False)
-            if rec.AcceptWaveform(data):
-                phrase = clean_text(json.loads(rec.Result()).get('text', ''))
-                if phrase: print(f"Heard: {phrase}")
+            if voz_y_oido.clarity(data, umbral=300):
+                if rec.AcceptWaveform(data):
+                    phrase = clean_text(json.loads(rec.Result()).get('text', ''))
+                    if phrase: print(f"Heard: {phrase}")
         if phrase != "" and not voz_y_oido.ai_speaking:
             if any(word in phrase for word in ["adios", "chao", "hasta luego", "no quiero mas"]):
                 speak_and_wait("Entendido, fue un gusto conversar contigo. ¡Hasta pronto!")
@@ -133,7 +134,7 @@ try:
                 speak_and_wait(response)
                 """Flow and form of the program's conversation"""
 
-        #cv2.imshow('Hero - WRO 2026', frame)
+        cv2.imshow('Hero - WRO 2026', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'): break
 
 finally:

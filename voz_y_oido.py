@@ -20,27 +20,38 @@ pause_hearing = threading.Event()
 voice = PiperVoice.load(MODEL, config_path=CONFIG)
 """Load the Piper voice model for high-quality speech synthesis"""
 
-def speak(text):
-    print(f"Hero dice: {text}")
-    """Synthesizes text into audio and plays it through the speakers"""
-    
-    with wave.open("salida.wav", "wb") as wav_file:
-        wav_file.setnchannels(1)
-        wav_file.setsampwidth(2)
-        wav_file.setframerate(22050)
-        voice.synthesize(text, wav_file)
-        """Save the generated speech to a temporary .wav file"""
+def clarity(data, umbral=600):
+    """Calculates RMS energy to filter out low volume background noise."""
+    audio_data = np.frombuffer(data, dtype=np.int16).astype(np.float32)
+    mean_square = np.mean(audio_data**2)
+    if mean_square <= 0: return False
+    rms = np.sqrt(mean_square)
+    return rms > umbral
 
-    audio_data = []
-    for audio_bytes in voice.synthesize(text):
-        int_data = np.frombuffer(audio_bytes.audio_int16_bytes, dtype=np.int16)
-        audio_data.append(int_data)
-        """Process and play the synthesized audio in memory using NumPy"""
-    
-    full_audio = np.concatenate(audio_data)
-    sd.play(full_audio, samplerate=22050)
-    sd.wait() 
-    """Ensure audio playback finishes before proceeding"""
+def speak(text):
+    global ai_speaking 
+    ai_speaking = True 
+    print(f"Hero dice: {text}")
+    try:
+        audio_data = []
+        for audio_bytes in voice.synthesize(text):
+            int_data = np.frombuffer(audio_bytes.audio_int16_bytes, dtype=np.int16)
+            audio_data.append(int_data)
+        
+        full_audio = np.concatenate(audio_data)
+        
+        with wave.open("salida.wav", "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(22050)
+            wav_file.writeframes(full_audio.tobytes())
+            
+        sd.play(full_audio, samplerate=22050)
+        sd.wait() 
+    finally:
+        ai_speaking = False
+        print("Hero terminó de hablar.")
+    """Synthesizes text into audio and plays it through the speakers"""
 
 def clean_text(text):
     if not text: return ""
