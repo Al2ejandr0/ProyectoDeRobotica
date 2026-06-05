@@ -14,7 +14,9 @@ CONFIG = "piper/es_ES-davefx-medium.onnx.json"
 """Path configuration for the TTS (Text-to-Speech) engine"""
 
 ai_speaking = False
-pause_hearing = threading.Event()
+pause_hearing = threading.Event()    
+p = pyaudio.PyAudio()
+stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=4000)
 """Global state flags for controlling audio flow and thread synchronization"""
 
 voice = PiperVoice.load(MODEL, config_path=CONFIG)
@@ -31,6 +33,8 @@ def clarity(data, umbral=600):
 def speak(text):
     global ai_speaking 
     ai_speaking = True 
+    pause_hearing.set()
+    stream.stop_stream()
     print(f"Hero dice: {text}")
     try:
         audio_data = []
@@ -50,6 +54,8 @@ def speak(text):
         sd.wait() 
     finally:
         ai_speaking = False
+        pause_hearing.clear()
+        stream.start_stream()
         print("Hero terminó de hablar.")
     """Synthesizes text into audio and plays it through the speakers"""
 
@@ -63,10 +69,6 @@ def initialize_hearing():
     model = vosk.Model("model")
     rec = vosk.KaldiRecognizer(model, 16000)
     """Initialize the speech-to-text model"""
-    
-    p = pyaudio.PyAudio()
-    stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=4000)
-    stream.start_stream()
     """Configuring the audio input flow from the microphone"""
     
-    return rec, stream, p
+    return rec

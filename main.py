@@ -14,9 +14,9 @@ def main():
     import serial  
     from VISION import DetectorRostro 
     import voz_y_oido 
-    from voz_y_oido import speak, clean_text, initialize_hearing
+    from voz_y_oido import stream, speak, clean_text, initialize_hearing
     from BaseDeDatos import Open_DataBase
-    
+
     print("Loading local database...")
     db = Open_DataBase()
     """Initialization process"""
@@ -47,7 +47,7 @@ def main():
     cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-    rec, stream, p = initialize_hearing()
+    rec = initialize_hearing()
     """Camera and audio initialization"""
 
     state = "ANALYZING"
@@ -113,8 +113,10 @@ def main():
                     if rec.AcceptWaveform(data):
                         phrase = clean_text(json.loads(rec.Result()).get('text', ''))
                         if phrase: print(f"Heard: {phrase}")
+            ui.set_ui_data("status", "Pensando")
             if phrase != "" and not voz_y_oido.ai_speaking:
                 if any(word in phrase for word in ["adios", "chao", "hasta luego", "no quiero mas"]):
+                    ui.set_ui_data("status", "Hablando")
                     speak_and_wait("Entendido, fue un gusto conversar contigo. ¡Hasta pronto!")
                     state = "ANALYZING"
                     search_block_time = now + 10
@@ -124,7 +126,6 @@ def main():
                     can_stop = False 
                     ui.set_ui_data("status", "En Movimiento")
                     continue
-                ui.set_ui_data("status", "Pensando")
                 if state == "WAITING_ACCEPTANCE":
                     if is_affirmative(phrase) or gesture_detected == "si":
                         ui.set_ui_data("status", "Hablando")
