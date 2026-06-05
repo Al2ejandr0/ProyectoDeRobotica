@@ -2,22 +2,22 @@ import threading
 import time
 from ui import HeroUI
 
-time.sleep(4)
 ui = HeroUI()
 ui.running = True
 
+import cv2
+import json
+import serial  
+from VISION import DetectorRostro 
+from cerebro import cerebro_hero
+import voz_y_oido 
+from voz_y_oido import speak, clean_text, initialize_hearing
+from BaseDeDatos import Open_DataBase
+"""Calls the necessary files and libraries to execute the code"""
+
 def main():
-    import cv2
-    import json
-    import serial  
-    from VISION import DetectorRostro 
-    from cerebro import cerebro_hero
-    import voz_y_oido 
-    from voz_y_oido import speak, clean_text, initialize_hearing
-    """Calls the necessary files and libraries to execute the code"""
 
     print("Loading local database...")
-    from BaseDeDatos import Open_DataBase
     db = Open_DataBase()
     """Initialization process"""
 

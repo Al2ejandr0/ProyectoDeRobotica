@@ -5,6 +5,7 @@ from ctypes import *
 from sdl3 import *
 from OpenGL.GL import *
 from PIL import Image
+import os
 
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 600
@@ -219,6 +220,7 @@ class HeroUI:
         return False
 
     def init_sdl_opengl(self):
+        os.environ["SDL_VIDEODRIVER"] = "x11"
         if not SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD):
             print(f"Error al inicializar SDL: {SDL_GetError().decode()}", file=sys.stderr)
             return False
@@ -228,7 +230,7 @@ class HeroUI:
             return False
 
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3)
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3)
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1)
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY)
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1)
 
@@ -254,7 +256,7 @@ class HeroUI:
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-        font_path = b"/usr/share/fonts/TTF/DejaVuSans.ttf"
+        font_path = b"DejaVuSans.ttf"
         self.font = TTF_OpenFont(font_path, 24)
         if not self.font:
             print(f"Advertencia: No se pudo cargar la fuente en {font_path.decode()}. El texto podría no renderizarse.")
