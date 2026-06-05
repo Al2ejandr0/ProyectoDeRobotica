@@ -20,13 +20,13 @@ pause_hearing = threading.Event()
 voice = PiperVoice.load(MODEL, config_path=CONFIG)
 """Load the Piper voice model for high-quality speech synthesis"""
 
-def clarity(data, umbral=600):
-    """Calculates RMS energy to filter out low volume background noise."""
+def clarity(data, umbral=450):
     audio_data = np.frombuffer(data, dtype=np.int16).astype(np.float32)
     mean_square = np.mean(audio_data**2)
     if mean_square <= 0: return False
     rms = np.sqrt(mean_square)
     return rms > umbral
+"""Calculates RMS energy to filter out low volume background noise"""
 
 def speak(text):
     global ai_speaking 
@@ -48,6 +48,7 @@ def speak(text):
             
         sd.play(full_audio, samplerate=22050)
         sd.wait() 
+
     finally:
         ai_speaking = False
         print("Hero terminó de hablar.")
