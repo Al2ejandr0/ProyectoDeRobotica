@@ -237,7 +237,7 @@ class HeroUI:
         self.window = SDL_CreateWindow(
             b"HERO Robot Control Center",
             SCREEN_WIDTH, SCREEN_HEIGHT,
-            SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS
+            SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_FULLSCREEN
         )
         SDL_SetWindowPosition(self.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED)
         
