@@ -7,7 +7,7 @@ from BaseDeDatos import Search_Information
 load_dotenv(os.path.dirname(__file__) + "/api_key.env")
 """Load environment variable for API Key"""
 
-def has_internet(host="8.8.8.8", port=53, timeout=1):
+def has_internet(host="8.8.8.8", port=53, timeout=5):
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(timeout)
