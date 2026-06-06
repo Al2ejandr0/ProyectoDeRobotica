@@ -1,11 +1,11 @@
 import sys
 import threading
-import time
 from ctypes import *
 from sdl3 import *
 from OpenGL.GL import *
 from PIL import Image
 import os
+import cv2
 
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 600
@@ -24,6 +24,12 @@ class HeroUI:
         self.active_buttons = {}
         self.current_page = "HOME"
 
+        self.rendercam = False
+        self.cam_frame = None
+        self.cam_texture = None
+        self.cam_w = 0
+        self.cam_h = 0
+
         self.bot_texture = None
         self.bot_w = 0
         self.bot_h = 0
@@ -32,7 +38,7 @@ class HeroUI:
         self.backbtn_w = 0
         self.backbtn_h = 0
 
-    def load_texture(self, path):
+    def load_texture(self, path = str()):
         try:
             img = Image.open(path).convert("RGBA")
             img_data = img.tobytes("raw", "RGBA", 0, -1)
@@ -237,7 +243,7 @@ class HeroUI:
         self.window = SDL_CreateWindow(
             b"HERO Robot Control Center",
             SCREEN_WIDTH, SCREEN_HEIGHT,
-            SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_FULLSCREEN
+            SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS
         )
         SDL_SetWindowPosition(self.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED)
         
@@ -264,6 +270,14 @@ class HeroUI:
         self.bot_texture, self.bot_w, self.bot_h = self.load_texture("ui/bot.png")
         self.backbtn_texture, self.backbtn_w, self.backbtn_h = self.load_texture("ui/back.png")
 
+        self.cam_texture = glGenTextures(1)
+        glBindTexture(GL_TEXTURE_2D, self.cam_texture)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glBindTexture(GL_TEXTURE_2D, 0)
+
         return True
 
     def set_ui_data(self, data_name : str, data):
@@ -271,9 +285,6 @@ class HeroUI:
 
     def set_ui_page(self, page : str):
         self.current_page = page
-
-    def send_robot_command(self, command):
-        print(f"Comando enviado: {command}")
 
     def handle_events(self):
         event = SDL_Event()
@@ -290,17 +301,36 @@ class HeroUI:
             if self.current_page == "HOME":
                 if self.update_button_state(event, "btn_connect", 20, 120, 200, 50) \
                 and event.type in (SDL_EVENT_MOUSE_BUTTON_UP, SDL_EVENT_FINGER_UP):
-                    self.send_robot_command("CONNECT_CLICKED")
+                    print("CONNECT_CLICKED")
 
                 if self.update_button_state(event, "btn_back", 16, SCREEN_HEIGHT - self.backbtn_h - 16, self.backbtn_w, self.backbtn_h) \
                 and event.type in (SDL_EVENT_MOUSE_BUTTON_UP, SDL_EVENT_FINGER_UP):
-                    self.send_robot_command("BACK_CLICKED")
+                    print("BACK_CLICKED")
 
     def render(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         white_color = SDL_Color(255, 255, 255, 255)
         btn_bg = SDL_Color(50, 120, 220, 255)
+
+        if self.rendercam:
+            frame = cv2.cvtColor(self.cam_frame, cv2.COLOR_BGR2RGB)
+            self.cam_h, self.cam_w, _ = self.cam_frame.shape
+            camframe_x, camframe_y = 200, 64
+            glBindTexture(GL_TEXTURE_2D, self.cam_texture)
+            glTexImage2D(
+                GL_TEXTURE_2D, 
+                0, 
+                GL_RGB, 
+                self.cam_w, 
+                self.cam_h, 
+                0, 
+                GL_RGB, 
+                GL_UNSIGNED_BYTE, 
+                cv2.flip(frame, 0).tobytes()
+            )
+            self.render_texture(self.cam_texture, camframe_x, camframe_y, self.cam_w, self.cam_h)
+            glBindTexture(GL_TEXTURE_2D, 0)
 
         if self.current_page == "HOME":
             if self.bot_texture:

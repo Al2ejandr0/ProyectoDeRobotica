@@ -8,7 +8,7 @@ MeMegaPiDCMotor motorM3(PORT3B);
 MeMegaPiDCMotor motorM4(PORT4B);
 //Inclusion of the motors and sensors in their corresponding pins
 
-int velocity = 160;
+int velocity = 100;
 //Predefined velocity value
 
 short forward = 1; 
