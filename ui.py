@@ -24,11 +24,14 @@ class HeroUI:
         self.active_buttons = {}
         self.current_page = "HOME"
 
+        self.cap = cv2.VideoCapture(0)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
         self.rendercam = False
         self.cam_frame = None
+        self.camframe_x = 200
+        self.camframe_y = 64
         self.cam_texture = None
-        self.cam_w = 0
-        self.cam_h = 0
 
         self.bot_texture = None
         self.bot_w = 0
@@ -313,23 +316,22 @@ class HeroUI:
         white_color = SDL_Color(255, 255, 255, 255)
         btn_bg = SDL_Color(50, 120, 220, 255)
 
-        if self.rendercam:
-            frame = cv2.cvtColor(self.cam_frame, cv2.COLOR_BGR2RGB)
-            self.cam_h, self.cam_w, _ = self.cam_frame.shape
-            camframe_x, camframe_y = 200, 64
+        if self.cap.isOpened():
+            self.rendercam, self.cam_frame = self.cap.read(0)
+            cam_h, cam_w, _ = self.cam_frame.shape
             glBindTexture(GL_TEXTURE_2D, self.cam_texture)
             glTexImage2D(
                 GL_TEXTURE_2D, 
                 0, 
                 GL_RGB, 
-                self.cam_w, 
-                self.cam_h, 
+                cam_w, 
+                cam_h, 
                 0, 
                 GL_RGB, 
                 GL_UNSIGNED_BYTE, 
-                cv2.flip(frame, 0).tobytes()
+                cv2.cvtColor(cv2.flip(self.cam_frame, 0), cv2.COLOR_BGR2RGB).tobytes()
             )
-            self.render_texture(self.cam_texture, camframe_x, camframe_y, self.cam_w, self.cam_h)
+            self.render_texture(self.cam_texture, self.camframe_x, self.camframe_y, cam_w, cam_h)
             glBindTexture(GL_TEXTURE_2D, 0)
 
         if self.current_page == "HOME":

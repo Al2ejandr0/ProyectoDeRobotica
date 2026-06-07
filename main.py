@@ -44,9 +44,7 @@ def main():
             """Cleans the audio buffer to avoid echoes or processing old commands"""
 
     detector = DetectorRostro() 
-    cap = cv2.VideoCapture(0)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
+    cap = ui.cap
     rec, stream = initialize_hearing()
     """Camera and audio initialization"""
 
@@ -62,26 +60,22 @@ def main():
 
 
     def speak_and_wait(text):
-        def _speak():
-            ui.set_ui_data("status", "Hablando")
-            if len(text) < 3: return
-            speak(text)
-            while voz_y_oido.ai_speaking:
-                time.sleep(0.1)
-            time.sleep(0.5)
-            clean_audio(stream)
-            rec.Reset()
-            """Audio and buffer cleaning after speaking"""
-        thread = threading.Thread(target=_speak)
-        thread.start()
+        ui.set_ui_data("status", "Hablando")
+        if len(text) < 3: return
+        speak(text)
+        while voz_y_oido.ai_speaking:
+            time.sleep(0.1)
+        time.sleep(0.5)
+        clean_audio(stream)
+        rec.Reset()
+        """Audio and buffer cleaning after speaking"""
 
     print("Hero ready. Starting interaction")
     ui.set_ui_data("status", "En Movimiento")
     try:
         while ui.running and cap.isOpened():
-            ret, frame = cap.read()
-            ui.rendercam = ret
-            ui.cam_frame = frame
+            ret = ui.rendercam
+            frame = ui.cam_frame
             if not ret: break
             faces_detected, gesture_detected = detector.procesar_frame(frame)
             now = time.time()
@@ -114,7 +108,7 @@ def main():
 
             phrase = ""
             if not voz_y_oido.ai_speaking:
-                stream.start_stream()
+                if stream.is_stopped(): stream.start_stream()
                 if stream.get_read_available() > 0:
                     data = stream.read(2000, exception_on_overflow=False)
                     if voz_y_oido.clarity(data, umbral=300):
@@ -150,7 +144,6 @@ def main():
                     elif state == "WAITING_NAME":
                         parts = phrase.split()
                         user_name = parts[-1] if parts else "amigo"
-                        ui.set_ui_data("status", "Hablando")
                         speak_and_wait(f"Fino {user_name}, conversemos de Venezuela, ¿qué te gustaría saber?")
                         state = "FREE_CONVERSATION"
                         ui.set_ui_data("status", "Esperando Respuesta")
@@ -159,7 +152,7 @@ def main():
                         speak_and_wait(response)
                         ui.set_ui_data("status", "Esperando Respuesta")
                         """Flow and form of the program's conversation"""
-            else: stream.stop_stream()
+            elif not stream.is_stopped(): stream.stop_stream()
 
     finally:
         cap.release()
