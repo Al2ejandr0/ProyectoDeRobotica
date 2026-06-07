@@ -1,5 +1,4 @@
 import threading  
-import time
 from ui import HeroUI
 
 ui = HeroUI()
@@ -9,10 +8,11 @@ from cerebro import cerebro_hero
 
 def main():
 
+    import time
+    from VISION import DetectorRostro 
     import cv2
     import json
     import serial  
-    from VISION import DetectorRostro 
     import voz_y_oido 
     from voz_y_oido import stream, speak, clean_text, initialize_hearing
     from BaseDeDatos import Open_DataBase
@@ -44,9 +44,7 @@ def main():
             """Cleans the audio buffer to avoid echoes or processing old commands"""
 
     detector = DetectorRostro() 
-    cap = cv2.VideoCapture(0)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    cap = ui.cap
     rec = initialize_hearing()
     """Camera and audio initialization"""
 
@@ -60,7 +58,9 @@ def main():
     can_stop = True
     """Program execution states"""
 
+
     def speak_and_wait(text):
+        ui.set_ui_data("status", "Hablando")
         if len(text) < 3: return
         speak(text)
         while voz_y_oido.ai_speaking:
@@ -74,7 +74,8 @@ def main():
     ui.set_ui_data("status", "En Movimiento")
     try:
         while ui.running and cap.isOpened():
-            ret, frame = cap.read()
+            ret = ui.rendercam
+            frame = ui.cam_frame
             if not ret: break
             faces_detected, gesture_detected = detector.procesar_frame(frame)
             now = time.time()
@@ -90,7 +91,6 @@ def main():
                         movement_state = "STOPPED_INTERACTION"
                     if analysis_start_time == 0: analysis_start_time = now
                     if (now - analysis_start_time) >= 2 and not voz_y_oido.ai_speaking:
-                        ui.set_ui_data("status", "Hablando")
                         speak_and_wait("Hola mucho gusto, soy Hero, ¿te gustaría conversar conmigo?")
                         state = "WAITING_ACCEPTANCE"
                         analysis_start_time = 0
@@ -107,54 +107,50 @@ def main():
                         """MegaPi commands related to movement and conversation states"""
 
             phrase = ""
-            if not voz_y_oido.pause_hearing.is_set() and stream.get_read_available() > 0:
-                data = stream.read(2000, exception_on_overflow=False)
-                if voz_y_oido.clarity(data, umbral=300):
-                    if rec.AcceptWaveform(data):
-                        phrase = clean_text(json.loads(rec.Result()).get('text', ''))
-                        if phrase: print(f"Heard: {phrase}")
-            ui.set_ui_data("status", "Pensando")
-            if phrase != "" and not voz_y_oido.ai_speaking:
-                if any(word in phrase for word in ["adios", "chao", "hasta luego", "no quiero mas"]):
-                    ui.set_ui_data("status", "Hablando")
-                    speak_and_wait("Entendido, fue un gusto conversar contigo. ¡Hasta pronto!")
-                    state = "ANALYZING"
-                    search_block_time = now + 10
-                    print("Sending Advance command (A).")
-                    send_command('A') 
-                    movement_state = "MOVING"
-                    can_stop = False 
-                    ui.set_ui_data("status", "En Movimiento")
-                    continue
-                if state == "WAITING_ACCEPTANCE":
-                    if is_affirmative(phrase) or gesture_detected == "si":
-                        ui.set_ui_data("status", "Hablando")
-                        speak_and_wait("¡Genial! ¿Cómo te llamas?")
-                        state = "WAITING_NAME"
-                        ui.set_ui_data("status", "Esperando Respuesta")
-                    else:
-                        ui.set_ui_data("status", "Hablando")
-                        speak_and_wait("Entendido, hasta luego.")
+            if not voz_y_oido.ai_speaking:
+                if stream.get_read_available() > 0:
+                    data = stream.read(2000, exception_on_overflow=False)
+                    if voz_y_oido.clarity(data, umbral=300):
+                        if rec.AcceptWaveform(data):
+                            phrase = clean_text(json.loads(rec.Result()).get('text', ''))
+                            if phrase: print(f"Heard: {phrase}")
+                if phrase != "":
+                    ui.set_ui_data("status", "Pensando")
+                    if any(word in phrase for word in ["adios", "chao", "hasta luego", "no quiero mas"]):
+                        speak_and_wait("Entendido, fue un gusto conversar contigo. ¡Hasta pronto!")
                         state = "ANALYZING"
                         search_block_time = now + 10
                         print("Sending Advance command (A).")
                         send_command('A') 
                         movement_state = "MOVING"
-                        can_stop = False
+                        can_stop = False 
                         ui.set_ui_data("status", "En Movimiento")
-                elif state == "WAITING_NAME":
-                    parts = phrase.split()
-                    user_name = parts[-1] if parts else "amigo"
-                    ui.set_ui_data("status", "Hablando")
-                    speak_and_wait(f"Fino {user_name}, conversemos de Venezuela, ¿qué te gustaría saber?")
-                    state = "FREE_CONVERSATION"
-                    ui.set_ui_data("status", "Esperando Respuesta")
-                elif state == "FREE_CONVERSATION":
-                    response = cerebro_hero(phrase, db)
-                    ui.set_ui_data("status", "Hablando")
-                    speak_and_wait(response)
-                    ui.set_ui_data("status", "Esperando Respuesta")
-                    """Flow and form of the program's conversation"""
+                        continue
+                    if state == "WAITING_ACCEPTANCE":
+                        if is_affirmative(phrase) or gesture_detected == "si":
+                            speak_and_wait("¡Genial! ¿Cómo te llamas?")
+                            state = "WAITING_NAME"
+                            ui.set_ui_data("status", "Esperando Respuesta")
+                        else:
+                            speak_and_wait("Entendido, hasta luego.")
+                            state = "ANALYZING"
+                            search_block_time = now + 10
+                            print("Sending Advance command (A).")
+                            send_command('A') 
+                            movement_state = "MOVING"
+                            can_stop = False
+                            ui.set_ui_data("status", "En Movimiento")
+                    elif state == "WAITING_NAME":
+                        parts = phrase.split()
+                        user_name = parts[-1] if parts else "amigo"
+                        speak_and_wait(f"Fino {user_name}, conversemos de Venezuela, ¿qué te gustaría saber?")
+                        state = "FREE_CONVERSATION"
+                        ui.set_ui_data("status", "Esperando Respuesta")
+                    elif state == "FREE_CONVERSATION":
+                        response = cerebro_hero(phrase, db)
+                        speak_and_wait(response)
+                        ui.set_ui_data("status", "Esperando Respuesta")
+                        """Flow and form of the program's conversation"""
 
     finally:
         cap.release()
