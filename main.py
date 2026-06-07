@@ -14,7 +14,7 @@ def main():
     import json
     import serial  
     import voz_y_oido 
-    from voz_y_oido import speak, clean_text, initialize_hearing
+    from voz_y_oido import stream, speak, clean_text, initialize_hearing
     from BaseDeDatos import Open_DataBase
 
     print("Loading local database...")
@@ -45,7 +45,7 @@ def main():
 
     detector = DetectorRostro() 
     cap = ui.cap
-    rec, stream = initialize_hearing()
+    rec = initialize_hearing()
     """Camera and audio initialization"""
 
     state = "ANALYZING"
@@ -108,7 +108,6 @@ def main():
 
             phrase = ""
             if not voz_y_oido.ai_speaking:
-                if stream.is_stopped(): stream.start_stream()
                 if stream.get_read_available() > 0:
                     data = stream.read(2000, exception_on_overflow=False)
                     if voz_y_oido.clarity(data, umbral=300):
@@ -152,7 +151,6 @@ def main():
                         speak_and_wait(response)
                         ui.set_ui_data("status", "Esperando Respuesta")
                         """Flow and form of the program's conversation"""
-            elif not stream.is_stopped(): stream.stop_stream()
 
     finally:
         cap.release()
