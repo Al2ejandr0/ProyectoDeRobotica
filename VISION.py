@@ -49,6 +49,9 @@ class DetectorRostro:
         
             if results.multi_face_landmarks:
                 for face_landmarks in results.multi_face_landmarks:
+                    self.mp_drawing.draw_landmarks(
+                        frame, face_landmarks, self.mp_face_mesh.FACEMESH_CONTOURS
+                    )
                     gesto = self.analyze_gesture(face_landmarks)
                     """Execute the gesture recognition logic for the detected face"""
         

@@ -43,7 +43,6 @@ def main():
             stream.read(stream.get_read_available(), exception_on_overflow=False)
             """Cleans the audio buffer to avoid echoes or processing old commands"""
 
-    detector = DetectorRostro() 
     cap = ui.cap
     rec = initialize_hearing()
     """Camera and audio initialization"""
@@ -75,9 +74,9 @@ def main():
     try:
         while ui.running and cap.isOpened():
             ret = ui.rendercam
-            frame = ui.cam_frame
             if not ret: break
-            faces_detected, gesture_detected = detector.procesar_frame(frame)
+            faces_detected = ui.faces_detected
+            gesture_detected = ui.gesture_detected
             now = time.time()
             """Visual user detection"""
 

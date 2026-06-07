@@ -6,6 +6,7 @@ from OpenGL.GL import *
 from PIL import Image
 import os
 import cv2
+from VISION import DetectorRostro
 
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 600
@@ -25,10 +26,12 @@ class HeroUI:
         self.current_page = "HOME"
 
         self.cap = cv2.VideoCapture(0)
+        self.detector = DetectorRostro()
+        self.faces_detected = None
+        self.gesture_detected = None
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
         self.rendercam = False
-        self.cam_frame = None
         self.camframe_x = 200
         self.camframe_y = 64
         self.cam_texture = None
@@ -317,8 +320,9 @@ class HeroUI:
         btn_bg = SDL_Color(50, 120, 220, 255)
 
         if self.cap.isOpened():
-            self.rendercam, self.cam_frame = self.cap.read(0)
-            cam_h, cam_w, _ = self.cam_frame.shape
+            self.rendercam, cam_frame = self.cap.read(0)
+            self.faces_detected, self.gesture_detected = self.detector.procesar_frame(cam_frame)
+            cam_h, cam_w, _ = cam_frame.shape
             glBindTexture(GL_TEXTURE_2D, self.cam_texture)
             glTexImage2D(
                 GL_TEXTURE_2D, 
@@ -329,7 +333,7 @@ class HeroUI:
                 0, 
                 GL_RGB, 
                 GL_UNSIGNED_BYTE, 
-                cv2.cvtColor(cv2.flip(self.cam_frame, 0), cv2.COLOR_BGR2RGB).tobytes()
+                cv2.cvtColor(cv2.flip(cam_frame, 0), cv2.COLOR_BGR2RGB).tobytes()
             )
             self.render_texture(self.cam_texture, self.camframe_x, self.camframe_y, cam_w, cam_h)
             glBindTexture(GL_TEXTURE_2D, 0)
