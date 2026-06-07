@@ -22,7 +22,7 @@ stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, fram
 voice = PiperVoice.load(MODEL, config_path=CONFIG)
 """Load the Piper voice model for high-quality speech synthesis"""
 
-def clarity(data, umbral=350):
+def clarity(data, umbral=200):
     audio_data = np.frombuffer(data, dtype=np.int16).astype(np.float32)
     mean_square = np.mean(audio_data**2)
     if mean_square <= 0: return False
