@@ -1,10 +1,17 @@
 import threading  
 from ui import HeroUI
+import re 
 
 ui = HeroUI()
 ui.running = True
 from cerebro import cerebro_hero
 """Calls the necessary files and libraries to execute the code"""
+
+def limpiar_texto(texto):
+    """Limpia el Markdown y caracteres especiales para que la voz sea natural"""
+    texto = re.sub(r'[\*\#\-]', '', texto)
+    texto = re.sub(r'\n+', ' ', texto)
+    return " ".join(texto.split())
 
 def main():
 
@@ -62,7 +69,11 @@ def main():
     def speak_and_wait(text):
         ui.set_ui_data("status", "Hablando")
         if len(text) < 3: return
-        speak(text)
+        
+        # Aplicamos la limpieza del texto aquí
+        texto_limpio = limpiar_texto(text)
+        
+        speak(texto_limpio)
         while voz_y_oido.ai_speaking:
             time.sleep(0.1)
         time.sleep(0.5)
