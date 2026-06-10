@@ -32,8 +32,9 @@ class HeroUI:
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
         self.rendercam = False
-        self.camframe_x = 200
-        self.camframe_y = 64
+        self.camframe_x = 708
+        self.camframe_y = 16
+        self.camframe_size = 300
         self.cam_texture = None
 
         self.bot_texture = None
@@ -249,7 +250,7 @@ class HeroUI:
         self.window = SDL_CreateWindow(
             b"HERO Robot Control Center",
             SCREEN_WIDTH, SCREEN_HEIGHT,
-            SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS
+            SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_FULLSCREEN
         )
         SDL_SetWindowPosition(self.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED)
         
@@ -305,13 +306,10 @@ class HeroUI:
                 glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 
             if self.current_page == "HOME":
-                if self.update_button_state(event, "btn_connect", 20, 120, 200, 50) \
-                and event.type in (SDL_EVENT_MOUSE_BUTTON_UP, SDL_EVENT_FINGER_UP):
-                    print("CONNECT_CLICKED")
-
-                if self.update_button_state(event, "btn_back", 16, SCREEN_HEIGHT - self.backbtn_h - 16, self.backbtn_w, self.backbtn_h) \
+                if self.update_button_state(event, "btn_back", SCREEN_WIDTH - self.backbtn_w - 16, 16, self.backbtn_w, self.backbtn_h) \
                 and event.type in (SDL_EVENT_MOUSE_BUTTON_UP, SDL_EVENT_FINGER_UP):
                     print("BACK_CLICKED")
+                    self.running = False
 
     def render(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -323,6 +321,7 @@ class HeroUI:
             self.rendercam, cam_frame = self.cap.read(0)
             self.faces_detected, self.gesture_detected = self.detector.procesar_frame(cam_frame)
             cam_h, cam_w, _ = cam_frame.shape
+            ratio = cam_w / cam_h
             glBindTexture(GL_TEXTURE_2D, self.cam_texture)
             glTexImage2D(
                 GL_TEXTURE_2D, 
@@ -335,17 +334,15 @@ class HeroUI:
                 GL_UNSIGNED_BYTE, 
                 cv2.cvtColor(cv2.flip(cam_frame, 0), cv2.COLOR_BGR2RGB).tobytes()
             )
-            self.render_texture(self.cam_texture, self.camframe_x, self.camframe_y, cam_w, cam_h)
+            self.render_texture(self.cam_texture, self.camframe_x, self.camframe_y, self.camframe_size, self.camframe_size / ratio)
             glBindTexture(GL_TEXTURE_2D, 0)
 
         if self.current_page == "HOME":
             if self.bot_texture:
-                self.render_texture(self.bot_texture, 400, 100, self.bot_w, self.bot_h)
+                self.render_texture(self.bot_texture, SCREEN_WIDTH / 2 - self.bot_w / 2,  SCREEN_HEIGHT / 2 - self.bot_h / 2 + 64, self.bot_w, self.bot_h)
 
             if self.backbtn_texture:
-                self.render_texture(self.backbtn_texture, 16, SCREEN_HEIGHT - self.backbtn_h - 16, self.backbtn_w, self.backbtn_h)
-
-            self.render_button("btn_connect", "CONECTAR", 20, 120, 200, 50, btn_bg, white_color)
+                self.render_texture(self.backbtn_texture, SCREEN_WIDTH - self.backbtn_w - 16, 16, self.backbtn_w, self.backbtn_h)
 
         with self.data_lock:
             status_text = f"Estado: {self.robot_data['status']}"
