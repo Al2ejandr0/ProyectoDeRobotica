@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 from BaseDeDatos import Search_Information
 
 load_dotenv(os.path.dirname(__file__) + "/api_key.env")
-"""Load environment variable for API Key"""
 
 def has_internet(host="8.8.8.8", port=53, timeout=3):
     try:
@@ -16,7 +15,6 @@ def has_internet(host="8.8.8.8", port=53, timeout=3):
         return True
     except:
         return False
-"""Network connection check"""
 
 def call_local_ollama(messages):
     try:
@@ -32,42 +30,64 @@ def call_local_ollama(messages):
             json=payload_local,
             timeout=20
         )
-        """Independent function for local backup"""
         local_response.raise_for_status()
         return local_response.json()["message"]["content"]
     except Exception as e:
         print(f"Local brain failed due to -> {e}")
-        return "Disculpa, tuve un pequeño fallo técnico."
+        return "Disculpa mi pana, tuve un pequeño pestañeo técnico."
 
-def cerebro_hero(user_question, db):
-    min_question = user_question.lower()
+
+# --- FUSIÓN AJUSTADA Y MEJORADA ---
+def cerebro_hero(user_question, db, contexto_visual=None, forzar_local=False):
+    min_question = user_question.lower().strip()
     
+    # 1. Identificamos interacciones básicas estrictas (saludos, chistes)
     is_basic_interaction = any(word in min_question for word in [
-        "chiste", "broma", "cuentame algo gracioso", "hola", "saludos", "buenos dias", "como estas"
+        "chiste", "broma", "cuentame algo gracioso", "hola", "saludos", "buenos dias", 
+        "como estas", "me llamo", "mi nombre es", "soy", "un placer", "que tal"
     ])
 
-    if is_basic_interaction:
-        print("Basic interaction.")
+    # 2. Control de búsqueda en Base de Datos
+    if is_basic_interaction or contexto_visual:
+        print("Basic or greeting interaction detected. Skipping DB search.")
         found_data = ""
     else:
-        print("Searching in files (Database)")
+        print(f"Searching in files (Database) for: '{user_question}'")
         found_data = Search_Information(user_question, db)
 
+    # 3. Configuración de la personalidad de Hero
     instructions = (
-        "You're Hero, a cultural assistant. "
-        "Answer briefly, in a friendly way, with Venezuelan wit and charm. "
+        "Eres Hero, un robot asistente cultural interactivo en un museo de Venezuela. "
+        "Responde siempre de forma muy breve (máximo dos oraciones), amigable, con la chispa, el ingenio y el carisma del hablar venezolano. "
     )
-    instructions += f"Use this data: {found_data}" if found_data else "Use your general knowledge."
+    
+    # 4. INYECCIÓN DEL HALAGO REAL (Si aplica en este turno)
+    if contexto_visual:
+        instructions += (
+            f" OBSERVACIÓN VISUAL REAL: El usuario que tienes en frente tiene: '{contexto_visual}'. "
+            f"Incopora de forma muy natural, espontánea y alegre un cumplido corto sobre esto "
+            f"en tu respuesta (por ejemplo: ¡Qué fino el estilo de tu gorra! o ¡Esa camisa te queda genial!). "
+            f"Dilo con el flow, el respeto y la calidez de un pana venezolano."
+        )
+
+    if found_data:
+        instructions += f" Usa estrictamente estos datos del museo para responder: {found_data}"
     
     messages = [
         {"role": "system", "content": instructions},
         {"role": "user", "content": user_question}
     ]
     
-    # Intento con Groq (Nube)
+    # 5. ENRUTAMIENTO INTELIGENTE CORREGIDO
+    # Va a Ollama si es saludo inicial CON contexto visual, o si se fuerza localmente
+    if (is_basic_interaction and contexto_visual) or forzar_local:
+        print("Routing directly to Local Ollama...")
+        return call_local_ollama(messages)
+
+    # Si ya estamos en conversación libre (no hay contexto_visual), viaja directo a Groq
     if has_internet():
         try:
-            print("Internet connection (Groq)...")
+            print("Routing to Cloud (Groq) for advanced history/culture question...")
             headers = {
                 "Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}",
                 "Content-Type": "application/json"
@@ -76,7 +96,6 @@ def cerebro_hero(user_question, db):
                 "model": "llama-3.3-70b-versatile",
                 "messages": messages
             }
-            # Timeout subido a 15s para dar margen a la IA
             cloud_response = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers=headers,
@@ -91,5 +110,5 @@ def cerebro_hero(user_question, db):
         except Exception as e:
             print(f"Cloud failed: {e}")
 
-    # Fallback al modelo local
+    # Fallback final si no hay internet
     return call_local_ollama(messages)

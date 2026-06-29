@@ -7,6 +7,7 @@ from PIL import Image
 import os
 import cv2
 from VISION import DetectorRostro
+import random as rd
 
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 600
@@ -32,18 +33,37 @@ class HeroUI:
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
         self.rendercam = False
-        self.camframe_x = 708
-        self.camframe_y = 16
         self.camframe_size = 300
         self.cam_texture = None
-
-        self.bot_texture = None
-        self.bot_w = 0
-        self.bot_h = 0
 
         self.backbtn_texture = None
         self.backbtn_w = 0
         self.backbtn_h = 0
+
+        self.eyes = None
+        self.eyes_w = 0
+        self.eyes_h = 0
+        self.eyes_offset = 0
+        self.eyes_opened = True
+        self.eyes_timer = 0
+        self.eyes_max_time = rd.randint(90, 180)
+
+        self.eyes_bg = None
+        self.eyes_bg_w = 0
+        self.eyes_bg_h = 0
+
+        self.eyes_closed = None
+        self.eyes_closed_w = 0
+        self.eyes_closed_h = 0
+
+        self.mouth = None
+        self.mouth_w = 0
+        self.mouth_h = 0
+        self.mouth_opened = False
+
+        self.mouth_closed = None
+        self.mouth_closed_w = 0
+        self.mouth_closed_h = 0
 
     def load_texture(self, path = str()):
         try:
@@ -61,8 +81,14 @@ class HeroUI:
             return None, 0, 0
 
     def render_texture(self, texture_id, x, y, w, h):
-        glBindTexture(GL_TEXTURE_2D, texture_id)
+        glPushMatrix()
         glEnable(GL_TEXTURE_2D)
+        glBindTexture(GL_TEXTURE_2D, texture_id)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glDisable(GL_DEPTH_TEST)
+        glDepthMask(GL_FALSE)
+        glColor4f(1.0, 1.0, 1.0, 1.0)
         glBegin(GL_QUADS)
         x_start = (x / SCREEN_WIDTH) * 2.0 - 1.0
         y_start = 1.0 - (y / SCREEN_HEIGHT) * 2.0
@@ -73,7 +99,11 @@ class HeroUI:
         glTexCoord2f(1.0, 0.0); glVertex2f(x_end, y_end)
         glTexCoord2f(0.0, 0.0); glVertex2f(x_start, y_end)
         glEnd()
+        glEnable(GL_DEPTH_TEST)
+        glDepthMask(GL_TRUE)
+        glDisable(GL_BLEND)
         glDisable(GL_TEXTURE_2D)
+        glPopMatrix()
 
     def render_text_to_opengl(self, text, x, y, color):
         if not self.font:
@@ -100,8 +130,13 @@ class HeroUI:
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surf.w, surf.h, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixels_pointer)
 
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0)
-
+        
+        glPushMatrix()
         glEnable(GL_TEXTURE_2D)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glDisable(GL_DEPTH_TEST)
+        glColor4f(1.0, 1.0, 1.0, 1.0)
         glBegin(GL_QUADS)
         
         x_start = (x / SCREEN_WIDTH) * 2.0 - 1.0
@@ -115,7 +150,11 @@ class HeroUI:
         glTexCoord2f(0.0, 1.0); glVertex2f(x_start, y_end)
         
         glEnd()
+        glEnable(GL_DEPTH_TEST)
+        glDisable(GL_BLEND)
         glDisable(GL_TEXTURE_2D)
+        glBindTexture(GL_TEXTURE_2D, 0)
+        glPopMatrix()
 
         glDeleteTextures(1, byref(texture_id))
         SDL_DestroySurface(text_surface)
@@ -274,10 +313,15 @@ class HeroUI:
         if not self.font:
             print(f"Advertencia: No se pudo cargar la fuente en {font_path.decode()}. El texto podría no renderizarse.")
 
-        self.bot_texture, self.bot_w, self.bot_h = self.load_texture("ui/bot.png")
         self.backbtn_texture, self.backbtn_w, self.backbtn_h = self.load_texture("ui/back.png")
+        self.eyes, self.eyes_w, self.eyes_h = self.load_texture("ui/eyes.png")
+        self.eyes_bg, self.eyes_bg_w, self.eyes_bg_h = self.load_texture("ui/eyes-bg.png")
+        self.eyes_closed, self.eyes_closed_w, self.eyes_closed_h = self.load_texture("ui/eyes-closed.png")
+        self.mouth, self.mouth_w, self.mouth_h = self.load_texture("ui/mouth.png")
+        self.mouth_closed, self.mouth_closed_w, self.mouth_closed_h = self.load_texture("ui/mouth-closed.png")
 
-        self.cam_texture = glGenTextures(1)
+        self.cam_texture = GLuint()
+        glGenTextures(1, byref(self.cam_texture))
         glBindTexture(GL_TEXTURE_2D, self.cam_texture)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
@@ -294,6 +338,17 @@ class HeroUI:
         self.current_page = page
 
     def handle_events(self):
+        if self.eyes_opened:
+            if self.eyes_timer <= self.eyes_max_time: self.eyes_timer += 1
+            else:
+                self.eyes_opened = False
+                self.eyes_timer = 0
+        elif self.eyes_timer > 3:
+            self.eyes_timer = 0
+            self.eyes_max_time = rd.randint(90, 180)
+            self.eyes_opened = True
+        else: self.eyes_timer += 1
+
         event = SDL_Event()
         while SDL_PollEvent(byref(event)):
             if event.type == SDL_EVENT_QUIT:
@@ -317,6 +372,27 @@ class HeroUI:
         white_color = SDL_Color(255, 255, 255, 255)
         btn_bg = SDL_Color(50, 120, 220, 255)
 
+        with self.data_lock:
+            status_text = f"Estado: {self.robot_data['status']}"
+            battery_text = f"Bateria: {self.robot_data['battery']}%"
+
+        self.render_text_to_opengl(status_text, 20, 20, white_color)
+        self.render_text_to_opengl(battery_text, 20, 60, white_color)
+
+        if self.current_page == "HOME":
+            if self.backbtn_texture:
+                self.render_texture(self.backbtn_texture, SCREEN_WIDTH - self.backbtn_w - 16, 16, self.backbtn_w, self.backbtn_h)
+            if self.mouth:
+                self.render_texture(self.mouth, SCREEN_WIDTH / 2 - self.mouth_w / 2, SCREEN_HEIGHT / 2 - self.mouth_h / 2, self.mouth_w, self.mouth_h)
+            if self.mouth_closed and not self.mouth_opened:
+                self.render_texture(self.mouth_closed, SCREEN_WIDTH / 2 - self.mouth_closed_w / 2, SCREEN_HEIGHT / 2 - self.mouth_closed_h / 2, self.mouth_closed_w, self.mouth_closed_h)
+            if self.eyes_bg:
+                self.render_texture(self.eyes_bg, SCREEN_WIDTH / 2 - self.eyes_bg_w / 2, SCREEN_HEIGHT / 2 - self.eyes_bg_h / 2, self.eyes_bg_w, self.eyes_bg_h)
+            if self.eyes and self.eyes_opened:
+                self.render_texture(self.eyes, SCREEN_WIDTH / 2 - self.eyes_w / 2 + self.eyes_offset, SCREEN_HEIGHT / 2 - self.eyes_h / 2, self.eyes_w, self.eyes_h)
+            if self.eyes_closed and not self.eyes_opened:
+                self.render_texture(self.eyes_closed, SCREEN_WIDTH / 2 - self.eyes_closed_w / 2, SCREEN_HEIGHT / 2 - self.eyes_closed_h / 2, self.eyes_closed_w, self.eyes_closed_h)
+
         if self.cap.isOpened():
             self.rendercam, cam_frame = self.cap.read(0)
             self.faces_detected, self.gesture_detected = self.detector.procesar_frame(cam_frame)
@@ -334,22 +410,8 @@ class HeroUI:
                 GL_UNSIGNED_BYTE, 
                 cv2.cvtColor(cv2.flip(cam_frame, 0), cv2.COLOR_BGR2RGB).tobytes()
             )
-            self.render_texture(self.cam_texture, self.camframe_x, self.camframe_y, self.camframe_size, self.camframe_size / ratio)
+            self.render_texture(self.cam_texture, SCREEN_WIDTH - self.camframe_size - 16, 16, self.camframe_size, self.camframe_size / ratio)
             glBindTexture(GL_TEXTURE_2D, 0)
-
-        if self.current_page == "HOME":
-            if self.bot_texture:
-                self.render_texture(self.bot_texture, SCREEN_WIDTH / 2 - self.bot_w / 2,  SCREEN_HEIGHT / 2 - self.bot_h / 2 + 64, self.bot_w, self.bot_h)
-
-            if self.backbtn_texture:
-                self.render_texture(self.backbtn_texture, SCREEN_WIDTH - self.backbtn_w - 16, 16, self.backbtn_w, self.backbtn_h)
-
-        with self.data_lock:
-            status_text = f"Estado: {self.robot_data['status']}"
-            battery_text = f"Bateria: {self.robot_data['battery']}%"
-
-        self.render_text_to_opengl(status_text, 20, 20, white_color)
-        self.render_text_to_opengl(battery_text, 20, 60, white_color)
 
         SDL_GL_SwapWindow(self.window)
 
@@ -366,11 +428,20 @@ class HeroUI:
             TTF_CloseFont(self.font)
         TTF_Quit()
         
-        if self.bot_texture:
-            glDeleteTextures(1, byref(self.bot_texture))
-        
         if self.backbtn_texture:
             glDeleteTextures(1, byref(self.backbtn_texture))
+        if self.cam_texture:
+            glDeleteTextures(1, byref(self.cam_texture))
+        if self.mouth:
+            glDeleteTextures(1, byref(self.mouth))
+        if self.mouth_closed:
+            glDeleteTextures(1, byref(self.mouth_closed))
+        if self.eyes_bg:
+            glDeleteTextures(1, byref(self.eyes_bg))
+        if self.eyes:
+            glDeleteTextures(1, byref(self.eyes))
+        if self.eyes_closed:
+            glDeleteTextures(1, byref(self.eyes_bg))
 
         SDL_GL_DestroyContext(self.gl_context)
         SDL_DestroyWindow(self.window)
