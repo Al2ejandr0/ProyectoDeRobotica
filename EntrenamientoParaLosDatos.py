@@ -52,7 +52,8 @@ if __name__ == "__main__":
         rf"{path}/INFO/Cultura(1).txt",
         rf"{path}/INFO/proposito.txt",
         rf"{path}/INFO/integrantes.txt",
-        rf"{path}/INFO/Info.txt"
+        rf"{path}/INFO/Info.txt",
+        rf"{path}/INFO/batalla de carabobo.txt"
     ]
     print("Starting massive knowledge loading for Hero (Offline Mode)")
     print("-" * 60)

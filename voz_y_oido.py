@@ -1,10 +1,6 @@
-import subprocess
-import threading
 import pyaudio
 import vosk
 import unicodedata
-import wave
-import os
 import sounddevice as sd
 import numpy as np
 from piper import PiperVoice
@@ -35,21 +31,9 @@ def speak(text):
     stream.stop_stream()
     print(f"Hero dice: {text}")
     try:
-        audio_data = []
         for audio_bytes in voice.synthesize(text):
-            int_data = np.frombuffer(audio_bytes.audio_int16_bytes, dtype=np.int16)
-            audio_data.append(int_data)
-        
-        full_audio = np.concatenate(audio_data)
-        
-        with wave.open("salida.wav", "wb") as wav_file:
-            wav_file.setnchannels(1)
-            wav_file.setsampwidth(2)
-            wav_file.setframerate(22050)
-            wav_file.writeframes(full_audio.tobytes())
-            
-        sd.play(full_audio, samplerate=22050)
-        sd.wait() 
+            sd.play(audio_bytes.audio_int16_array, samplerate=22050)
+            sd.wait()
 
     finally:
         ai_speaking = False
