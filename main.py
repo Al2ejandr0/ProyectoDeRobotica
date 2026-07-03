@@ -125,7 +125,9 @@ def main():
         ui.set_ui_data("status", "Hablando")
         if len(text) < 3: return
         texto_limpio = limpiar_texto(text)
+        ui.mouth_opened = True
         speak(texto_limpio)
+        ui.mouth_opened = False
         while voz_y_oido.ai_speaking:
             time.sleep(0.1)
         time.sleep(0.5)
