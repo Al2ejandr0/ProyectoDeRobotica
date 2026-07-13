@@ -30,8 +30,8 @@ class HeroUI:
         self.detector = DetectorRostro()
         self.faces_detected = None
         self.gesture_detected = None
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 300)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 176)
         self.rendercam = False
         self.camframe_size = 300
         self.cam_texture = None
