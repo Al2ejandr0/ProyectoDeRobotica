@@ -192,9 +192,9 @@ def main():
                         contexto_actual = None 
                         ui.set_ui_data("status", "En Movimiento")
 
-            # --- LÓGICA DE ESCUCHA ACUMULATIVA ---
-        phrase = ""
-        if not voz_y_oido.ai_speaking:
+# --- LÓGICA DE ESCUCHA ACUMULATIVA (OPTIMIZADA PARA RASPBERRY PI) ---
+            phrase = ""
+            if not voz_y_oido.ai_speaking:
                 # 1. BUCLE DE VACIADO: Leemos todo el audio pendiente para no escuchar con retraso
                 while stream.get_read_available() >= 2000:
                     data = stream.read(2000, exception_on_overflow=False)
