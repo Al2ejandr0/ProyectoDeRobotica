@@ -120,10 +120,6 @@ def main():
     user_name = ""
     can_stop = True
     contexto_actual = None 
-    
-    # --- VARIABLES PARA ESCUCHA ACUMULATIVA ---
-    frase_acumulada = ""
-    last_voice_time = time.time()
 
     def speak_and_wait(text):
         ui.set_ui_data("status", "Hablando")
@@ -192,32 +188,15 @@ def main():
                         contexto_actual = None 
                         ui.set_ui_data("status", "En Movimiento")
 
-# --- LÓGICA DE ESCUCHA ACUMULATIVA (OPTIMIZADA PARA RASPBERRY PI) ---
             phrase = ""
             if not voz_y_oido.ai_speaking:
-                # 1. BUCLE DE VACIADO: Leemos todo el audio pendiente para no escuchar con retraso
-                while stream.get_read_available() >= 2000:
+                if stream.get_read_available() > 0:
                     data = stream.read(2000, exception_on_overflow=False)
-                    
                     if voz_y_oido.clarity(data, umbral=300):
-                        last_voice_time = time.time() # Hay voz, reiniciamos el cronómetro
                         if rec.AcceptWaveform(data):
-                            part = json.loads(rec.Result()).get('text', '')
-                            if part:
-                                frase_acumulada += " " + part
-                
-                # 2. EVALUACIÓN DE SILENCIO Y RESCATE DE MEMORIA
-                if (time.time() - last_voice_time) > 2.0:
-                    # ¡CRUCIAL!: Extraemos las últimas palabras atrapadas en el búfer de Vosk
-                    resto = json.loads(rec.FinalResult()).get('text', '')
-                    if resto:
-                        frase_acumulada += " " + resto
-                        
-                    if frase_acumulada.strip() != "":
-                        phrase = clean_text(frase_acumulada.strip())
-                        frase_acumulada = "" # Limpiamos para la próxima vez
-                        print(f"Pregunta completa recibida: {phrase}")
-
+                            phrase = clean_text(json.loads(rec.Result()).get('text', ''))
+                            if phrase: print(f"Heard: {phrase}")
+            
             if phrase != "":
                 ui.set_ui_data("status", "Pensando")
                 if any(word in phrase for word in ["adios", "chao", "hasta luego", "no quiero mas"]):
