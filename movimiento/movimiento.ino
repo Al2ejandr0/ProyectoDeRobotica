@@ -3,9 +3,12 @@
 MeUltrasonicSensor ultra1(PORT_6);
 MeUltrasonicSensor ultra2(PORT_8);
 MeMegaPiDCMotor motorM1(PORT1B);
-MeMegaPiDCMotor motorM2(PORT2B);
-MeMegaPiDCMotor motorM3(PORT3B);
 MeMegaPiDCMotor motorM4(PORT4B);
+
+MePort port(PORT_7);
+Servo servo;
+int16_t servoPin =  port.pin1();
+
 //Inclusion of the motors and sensors in their corresponding pins
 
 int velocity = 100;
@@ -14,10 +17,18 @@ int velocity = 100;
 short forward = 1; 
 //Direction or rotation of the motors 
 
+int rotation = 90;
+
+int rotationSpeed = 2;
+
+short direction = 1;
+
 char incomingCommand = ' ';
 // Variable to store the command received from Python
 
 void setup() {
+  servo.attach(servoPin);
+
   Serial.begin(9600);
   Serial.println("System initialized");
   //Serial connection
@@ -33,7 +44,7 @@ void loop() {
   if (incomingCommand == 'D') {
     //Command 'D' (Stop)
 
-    motorM1.run(0); motorM2.run(0); motorM3.run(0); motorM4.run(0);
+    motorM1.run(0); motorM4.run(0);
     //The robot remains still while the command is D
   } 
   else {
@@ -71,11 +82,14 @@ void loop() {
     }
 
     motorM1.run(-velocity * forward);
-    motorM2.run(velocity * forward);
-    motorM3.run((0.5 * velocity) * forward);
     motorM4.run(velocity * forward);
     //Velocity adjustment for each motor
+
+    if (rotation >= 180) direction = -1;
+    else if (rotation <= 0) direction = 1;
+    rotation += rotationSpeed * direction;
+    servo.write(rotation);
   }
 
-  delay(100);
+  delay(50);
 }
