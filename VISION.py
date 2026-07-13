@@ -3,55 +3,77 @@ import mediapipe as mp
 
 class DetectorRostro:
     def __init__(self):
-        # Usamos FaceDetection (6 puntos clave, ultra optimizado para Raspberry Pi)
-        self.mp_face = mp.solutions.face_detection
-        self.face_detection = self.mp_face.FaceDetection(model_selection=1, min_detection_confidence=0.5)
+        # Volvemos a FaceMesh para obtener todos los puntos de la malla facial
+        self.mp_face_mesh = mp.solutions.face_mesh
+        self.face_mesh = self.mp_face_mesh.FaceMesh(
+            max_num_faces=5, # Detectamos varias caras para luego filtrar la más cercana
+            refine_landmarks=False,
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5
+        )
+        
+        # Utilidades para dibujar la malla en pantalla
+        self.mp_drawing = mp.solutions.drawing_utils
+        self.mp_drawing_styles = mp.solutions.drawing_styles
+        
         self.history_positions = []
 
     def procesar_frame(self, frame):
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = self.face_detection.process(frame_rgb)
+        results = self.face_mesh.process(frame_rgb)
         
         gesto = None
         rostro_detectado = False
 
-        if results.detections:
+        if results.multi_face_landmarks:
             rostro_detectado = True
             
             # 1. EL FILTRO MÁGICO (Target Lock):
-            # De todas las caras detectadas, busca la que tenga el Bounding Box con mayor área (ancho * alto)
-            rostro_principal = max(
-                results.detections, 
-                key=lambda d: d.location_data.relative_bounding_box.width * d.location_data.relative_bounding_box.height
-            )
+            # Buscamos la cara que ocupe mayor área en pantalla (la persona más cercana a Hero)
+            rostro_principal = None
+            max_area = 0
+            
+            for face_landmarks in results.multi_face_landmarks:
+                # Extraemos las coordenadas X e Y relativas para calcular el ancho y alto del rostro
+                xs = [lm.x for lm in face_landmarks.landmark]
+                ys = [lm.y for lm in face_landmarks.landmark]
+                area = (max(xs) - min(xs)) * (max(ys) - min(ys))
+                
+                if area > max_area:
+                    max_area = area
+                    rostro_principal = face_landmarks
 
-            # 2. Trabajamos EXCLUSIVAMENTE con 'rostro_principal' (Ignoramos a los demás)
-            bboxC = rostro_principal.location_data.relative_bounding_box
-            h, w, c = frame.shape
-            bbox = (int(bboxC.xmin * w), int(bboxC.ymin * h), 
-                    int(bboxC.width * w), int(bboxC.height * h))
-            
-            # Dibujamos su recuadro en Verde
-            cv2.rectangle(frame, bbox, (0, 255, 0), 3)
-            
-            # Dibujamos SUS 6 puntos clave
-            for i in range(6): 
-                kp = self.mp_face.get_key_point(rostro_principal, i)
-                x_kp = int(kp.x * w)
-                y_kp = int(kp.y * h)
-                cv2.circle(frame, (x_kp, y_kp), 5, (0, 0, 255), -1)
-            
-            # Calculamos el gesto SOLO de esta persona (Keypoint 2 es la punta de la nariz)
-            nariz = self.mp_face.get_key_point(rostro_principal, self.mp_face.FaceKeyPoint.NOSE_TIP)
-            gesto = self.analizar_gesto(nariz.x, nariz.y)
+            # 2. Trabajamos EXCLUSIVAMENTE con 'rostro_principal'
+            if rostro_principal:
+                # Dibujamos la malla facial (los puntitos y líneas que querías recuperar)
+                self.mp_drawing.draw_landmarks(
+                    image=frame,
+                    landmark_list=rostro_principal,
+                    connections=self.mp_face_mesh.FACEMESH_TESSELATION,
+                    landmark_drawing_spec=None,
+                    connection_drawing_spec=self.mp_drawing_styles.get_default_face_mesh_tesselation_style()
+                )
+                
+                # Dibujamos el contorno del rostro y los ojos/boca
+                self.mp_drawing.draw_landmarks(
+                    image=frame,
+                    landmark_list=rostro_principal,
+                    connections=self.mp_face_mesh.FACEMESH_CONTOURS,
+                    landmark_drawing_spec=None,
+                    connection_drawing_spec=self.mp_drawing_styles.get_default_face_mesh_contours_style()
+                )
+
+                # Calculamos el gesto SOLO de esta persona. 
+                # En FaceMesh, el landmark '1' corresponde exactamente a la punta de la nariz.
+                nariz = rostro_principal.landmark[1]
+                gesto = self.analizar_gesto(nariz.x, nariz.y)
 
         return rostro_detectado, gesto
 
     def analizar_gesto(self, x, y):
-        # Prevención de salto fantasma: si cambia de una persona a otra bruscamente, limpiamos historial
+        # Prevención de salto fantasma por si otra persona se acerca de golpe
         if self.history_positions:
             ultima_x, ultima_y = self.history_positions[-1]
-            # Si la nariz "salta" más de un 25% del tamaño de la pantalla en un frame, es otra persona
             if abs(x - ultima_x) > 0.25 or abs(y - ultima_y) > 0.25:
                 self.history_positions.clear()
 
