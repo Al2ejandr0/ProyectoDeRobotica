@@ -193,23 +193,30 @@ def main():
                         ui.set_ui_data("status", "En Movimiento")
 
             # --- LÓGICA DE ESCUCHA ACUMULATIVA ---
-            phrase = ""
-            if not voz_y_oido.ai_speaking:
-                if stream.get_read_available() > 0:
+        phrase = ""
+        if not voz_y_oido.ai_speaking:
+                # 1. BUCLE DE VACIADO: Leemos todo el audio pendiente para no escuchar con retraso
+                while stream.get_read_available() >= 2000:
                     data = stream.read(2000, exception_on_overflow=False)
                     
                     if voz_y_oido.clarity(data, umbral=300):
-                        last_voice_time = time.time() # Reiniciamos el reloj cada vez que habla
+                        last_voice_time = time.time() # Hay voz, reiniciamos el cronómetro
                         if rec.AcceptWaveform(data):
                             part = json.loads(rec.Result()).get('text', '')
                             if part:
                                 frase_acumulada += " " + part
                 
-                # Comprobamos el silencio en un bloque independiente
-                if frase_acumulada != "" and (time.time() - last_voice_time) > 2.0:
-                    phrase = clean_text(frase_acumulada.strip())
-                    frase_acumulada = "" # Limpiamos para la próxima vez
-                    print(f"Pregunta completa recibida: {phrase}")
+                # 2. EVALUACIÓN DE SILENCIO Y RESCATE DE MEMORIA
+                if (time.time() - last_voice_time) > 2.0:
+                    # ¡CRUCIAL!: Extraemos las últimas palabras atrapadas en el búfer de Vosk
+                    resto = json.loads(rec.FinalResult()).get('text', '')
+                    if resto:
+                        frase_acumulada += " " + resto
+                        
+                    if frase_acumulada.strip() != "":
+                        phrase = clean_text(frase_acumulada.strip())
+                        frase_acumulada = "" # Limpiamos para la próxima vez
+                        print(f"Pregunta completa recibida: {phrase}")
 
             if phrase != "":
                 ui.set_ui_data("status", "Pensando")
