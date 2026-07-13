@@ -120,6 +120,10 @@ def main():
     user_name = ""
     can_stop = True
     contexto_actual = None 
+    
+    # --- VARIABLES PARA ESCUCHA ACUMULATIVA ---
+    frase_acumulada = ""
+    last_voice_time = time.time()
 
     def speak_and_wait(text):
         ui.set_ui_data("status", "Hablando")
@@ -188,15 +192,25 @@ def main():
                         contexto_actual = None 
                         ui.set_ui_data("status", "En Movimiento")
 
+            # --- LÓGICA DE ESCUCHA ACUMULATIVA ---
             phrase = ""
             if not voz_y_oido.ai_speaking:
                 if stream.get_read_available() > 0:
                     data = stream.read(2000, exception_on_overflow=False)
+                    
                     if voz_y_oido.clarity(data, umbral=300):
+                        last_voice_time = time.time() # Reiniciamos el reloj cada vez que habla
                         if rec.AcceptWaveform(data):
-                            phrase = clean_text(json.loads(rec.Result()).get('text', ''))
-                            if phrase: print(f"Heard: {phrase}")
-            
+                            part = json.loads(rec.Result()).get('text', '')
+                            if part:
+                                frase_acumulada += " " + part
+                
+                # Comprobamos el silencio en un bloque independiente
+                if frase_acumulada != "" and (time.time() - last_voice_time) > 2.0:
+                    phrase = clean_text(frase_acumulada.strip())
+                    frase_acumulada = "" # Limpiamos para la próxima vez
+                    print(f"Pregunta completa recibida: {phrase}")
+
             if phrase != "":
                 ui.set_ui_data("status", "Pensando")
                 if any(word in phrase for word in ["adios", "chao", "hasta luego", "no quiero mas"]):
