@@ -53,18 +53,6 @@ class DetectorRostro:
                     landmark_drawing_spec=None,
                     connection_drawing_spec=self.mp_drawing_styles.get_default_face_mesh_tesselation_style()
                 )
-                
-                # Dibujamos el contorno del rostro y los ojos/boca
-                self.mp_drawing.draw_landmarks(
-                    image=frame,
-                    landmark_list=rostro_principal,
-                    connections=self.mp_face_mesh.FACEMESH_CONTOURS,
-                    landmark_drawing_spec=None,
-                    connection_drawing_spec=self.mp_drawing_styles.get_default_face_mesh_contours_style()
-                )
-
-                # Calculamos el gesto SOLO de esta persona. 
-                # En FaceMesh, el landmark '1' corresponde exactamente a la punta de la nariz.
                 nariz = rostro_principal.landmark[1]
                 gesto = self.analizar_gesto(nariz.x, nariz.y)
 
