@@ -19,7 +19,9 @@ short forward = 1;
 
 int rotation = 90;
 
-int rotationSpeed = 2;
+int rotationLimit = 45;
+
+int rotationSpeed = 1;
 
 short direction = 1;
 
@@ -37,7 +39,7 @@ void setup() {
 void loop() {
   if (Serial.available() > 0) {
     incomingCommand = Serial.read();
-    Serial.print("Command received: "); Serial.println(incomingCommand);
+    Serial.print("Command received: "); // Serial.println(incomingCommand);
       // Read the command (If there is data on the serial port)
   }
 
@@ -48,13 +50,6 @@ void loop() {
     //The robot remains still while the command is D
   } 
   else {
-    if (incomingCommand == 'A') {
-      //Execute the advance command
-
-      incomingCommand = ' ';
-      //Reset to neutral state to allow navigation
-    }
-
     float dist1 = ultra1.distanceCm();
     float dist2 = ultra2.distanceCm();
     //Set distance as a decimal value
@@ -85,11 +80,11 @@ void loop() {
     motorM4.run(velocity * forward);
     //Velocity adjustment for each motor
 
-    if (rotation >= 180) direction = -1;
-    else if (rotation <= 0) direction = 1;
+    if (rotation >= 180 - rotationLimit) direction = -1;
+    else if (rotation <= rotationLimit) direction = 1;
     rotation += rotationSpeed * direction;
     servo.write(rotation);
   }
 
-  delay(50);
+  //delay(50);
 }
