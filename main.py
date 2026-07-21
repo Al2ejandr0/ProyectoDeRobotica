@@ -1,14 +1,18 @@
 import threading  
-from ui import HeroUI
 import re 
 import cv2        
 import numpy as np  
 import random     
+import time
+import json
+import serial  
 
+from ui import HeroUI
+from cerebro import cerebro_hero
+
+# Inicialización de la Interfaz
 ui = HeroUI()
 ui.running = True
-from cerebro import cerebro_hero
-"""Calls the necessary files and libraries to execute the code"""
 
 def limpiar_texto(texto):
     """Limpia el Markdown y caracteres especiales para que la voz sea natural"""
@@ -42,36 +46,38 @@ def obtener_halago_real(frame_compartido):
             xmin, xmax = x + int(w * 0.2), x + int(w * 0.8)
             if ymin < y: 
                 muestra_gorra = frame[ymin:ymax, xmin:xmax]
-                hsv_gorra = cv2.cvtColor(muestra_gorra, cv2.COLOR_BGR2HSV)
-                promedio_gorra = np.mean(hsv_gorra, axis=(0, 1))
-                
-                if promedio_gorra[1] > 90: 
-                    print("Vision: ¡Gorra o accesorio en la cabeza detectado!")
-                    return random.choice([
-                        "esa gorra o accesorio en tu cabeza que te da tremendo flow",
-                        "el gran estilo de lo que llevas en la cabeza hoy"
-                    ])
+                if muestra_gorra.size > 0:
+                    hsv_gorra = cv2.cvtColor(muestra_gorra, cv2.COLOR_BGR2HSV)
+                    promedio_gorra = np.mean(hsv_gorra, axis=(0, 1))
+                    
+                    if promedio_gorra[1] > 90: 
+                        print("Vision: ¡Gorra o accesorio en la cabeza detectado!")
+                        return random.choice([
+                            "esa gorra o accesorio en tu cabeza que te da tremendo flow",
+                            "el gran estilo de lo que llevas en la cabeza hoy"
+                        ])
 
         # 2. FALLBACK: SI NO HAY GORRA, ANALIZAMOS EL COLOR DE LA CAMISA
         ymin_c, ymax_c = int(alto * 0.7), int(alto * 0.9)
         xmin_c, xmax_c = int(ancho * 0.4), int(ancho * 0.6)
         muestra_camisa = frame[ymin_c:ymax_c, xmin_c:xmax_c]
         
-        hsv_camisa = cv2.cvtColor(muestra_camisa, cv2.COLOR_BGR2HSV)
-        promedio_hsv = np.mean(hsv_camisa, axis=(0, 1))
-        
-        hue, sat, val = promedio_hsv[0], promedio_hsv[1], promedio_hsv[2]
-        
-        if sat < 45 and val > 180:
-            return "esa camisa blanca que transmite una vibra impecable"
-        elif val < 55:
-            return "tu outfit oscuro que te da un toque de elegancia serio"
-        elif (0 <= hue < 10) or (160 <= hue <= 180):
-            return "ese color rojo intenso de tu ropa que demuestra mucha seguridad"
-        elif 35 <= hue < 85:
-            return "ese tono verde de tu ropa que se ve sumamente fresco"
-        elif 85 <= hue < 140:
-            return "ese color azul de tu ropa que te combina excelente"
+        if muestra_camisa.size > 0:
+            hsv_camisa = cv2.cvtColor(muestra_camisa, cv2.COLOR_BGR2HSV)
+            promedio_hsv = np.mean(hsv_camisa, axis=(0, 1))
+            
+            hue, sat, val = promedio_hsv[0], promedio_hsv[1], promedio_hsv[2]
+            
+            if sat < 45 and val > 180:
+                return "esa camisa blanca que transmite una vibra impecable"
+            elif val < 55:
+                return "tu outfit oscuro que te da un toque de elegancia serio"
+            elif (0 <= hue < 10) or (160 <= hue <= 180):
+                return "ese color rojo intenso de tu ropa que demuestra mucha seguridad"
+            elif 35 <= hue < 85:
+                return "ese tono verde de tu ropa que se ve sumamente fresco"
+            elif 85 <= hue < 140:
+                return "ese color azul de tu ropa que te combina excelente"
         
         return "el excelente estilo de la ropa que cargas hoy"
         
@@ -80,10 +86,6 @@ def obtener_halago_real(frame_compartido):
         return "una energía excelente"
 
 def main():
-    import time
-    from VISION import DetectorRostro 
-    import json
-    import serial  
     import voz_y_oido 
     from voz_y_oido import stream, speak, clean_text, initialize_hearing
     from BaseDeDatos import Open_DataBase
@@ -93,21 +95,25 @@ def main():
 
     try:
         arduino = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
-    except:
+    except Exception as e:
+        print(f"Arduino connection skipped: {e}")
         arduino = None
 
     def send_command(com):
         if arduino: 
-            arduino.write(com.encode())
-            print(f"Command sent to Arduino: {com}")
+            try:
+                arduino.write(com.encode())
+                print(f"Command sent to Arduino: {com}")
+            except Exception as e:
+                print(f"Error sending command to Arduino: {e}")
 
     def is_affirmative(text):
         positives = ["si", "sí", "claro", "vale", "bueno", "por supuesto", "acepto", "dale", "afirmativo"]
         return any(word in text for word in positives)
 
-    def clean_audio(stream):
-        if stream.get_read_available() > 0:
-            stream.read(stream.get_read_available(), exception_on_overflow=False)
+    def clean_audio(stream_obj):
+        if stream_obj.get_read_available() > 0:
+            stream_obj.read(stream_obj.get_read_available(), exception_on_overflow=False)
 
     rec = initialize_hearing()
 
@@ -123,7 +129,8 @@ def main():
 
     def speak_and_wait(text):
         ui.set_ui_data("status", "Hablando")
-        if len(text) < 3: return
+        if not text or len(text) < 2: 
+            return
         texto_limpio = limpiar_texto(text)
         ui.mouth_opened = True
         speak(texto_limpio)
@@ -138,11 +145,10 @@ def main():
     ui.set_ui_data("status", "En Movimiento")
     
     try:
-        # CORRECCIÓN: Depender puramente del estado de la UI para el bucle principal
         while ui.running:
             ret = ui.rendercam
             if not ret: 
-                time.sleep(0.03) # Evita consumo innecesario de CPU si la cámara no renderiza un frame listo
+                time.sleep(0.03) # Evita consumo innecesario de CPU
                 continue
                 
             faces_detected = ui.faces_detected
@@ -166,10 +172,11 @@ def main():
                         print("Face detected: Sending Stop command (D).")
                         send_command('D') 
                         movement_state = "STOPPED_INTERACTION"
-                    if analysis_start_time == 0: analysis_start_time = now
+                    if analysis_start_time == 0: 
+                        analysis_start_time = now
                     if (now - analysis_start_time) >= 2 and not voz_y_oido.ai_speaking:
                         
-                        # CORRECCIÓN EXTRA: Extraemos el frame de la UI usando un fallback seguro
+                        # Extraemos el frame de la UI
                         frame_actual = getattr(ui, 'last_frame', None)
                         contexto_actual = obtener_halago_real(frame_actual)
                         
@@ -195,7 +202,8 @@ def main():
                     if voz_y_oido.clarity(data, umbral=300):
                         if rec.AcceptWaveform(data):
                             phrase = clean_text(json.loads(rec.Result()).get('text', ''))
-                            if phrase: print(f"Heard: {phrase}")
+                            if phrase: 
+                                print(f"Heard: {phrase}")
             
             if phrase != "":
                 ui.set_ui_data("status", "Pensando")
@@ -226,36 +234,47 @@ def main():
                         can_stop = False
                         contexto_actual = None 
                         ui.set_ui_data("status", "En Movimiento")
+                        
                 elif state == "WAITING_NAME":
                     parts = phrase.split()
                     user_name = parts[-1] if parts else "amigo"
                     
-                    respuesta_saludo = cerebro_hero(phrase, db, contexto_visual=contexto_actual)
+                    # Llamada a Groq/Ollama con contexto visual
+                    try:
+                        respuesta_saludo = cerebro_hero(phrase, db, contexto_visual=contexto_actual)
+                    except Exception as e:
+                        print(f"Error calling cerebro_hero: {e}")
+                        respuesta_saludo = f"¡Un placer conocerte, {user_name}! Qué bueno tenerte por aquí."
+                        
                     speak_and_wait(respuesta_saludo)
                     
-                    # Limpieza de memoria visual global para el resto de la charla
+                    # Limpieza de memoria visual para el resto de la interacción
                     contexto_actual = None 
-                    
                     state = "FREE_CONVERSATION"
                     ui.set_ui_data("status", "Esperando Respuesta")
+                    
                 elif state == "FREE_CONVERSATION":
-                    response = cerebro_hero(phrase, db)
+                    try:
+                        response = cerebro_hero(phrase, db)
+                    except Exception as e:
+                        print(f"Error calling cerebro_hero: {e}")
+                        response = "Disculpa mi pana, me distraje un segundo. ¿Me lo puedes repetir?"
+                        
                     speak_and_wait(response)
                     ui.set_ui_data("status", "Esperando Respuesta")
             
-            # Una pequeña pausa para que el hilo 'main' no consuma un núcleo entero de CPU ciclando al infinito
+            # Evita saturar el procesador de la Pi
             time.sleep(0.01)
 
     finally:
-        # CORRECCIÓN: El release de la cámara lo debe hacer HeroUI cuando se cierre,
-        # pero dejamos un salvavidas por si acaso la UI no lo maneja internamente.
         if hasattr(ui, 'cap') and ui.cap.isOpened():
             ui.cap.release()
-        if arduino: arduino.close()
+        if arduino: 
+            arduino.close()
         print("System shut down correctly.")
 
 main_thread = threading.Thread(target=main)
-main_thread.daemon = True # Hilo demonio para que muera si cerramos la ventana de la interfaz
+main_thread.daemon = True 
 main_thread.start()
 
 ui.run()
