@@ -80,15 +80,15 @@ def cerebro_hero(user_question, db, contexto_visual=None, forzar_local=False):
     ]
     
     # 5. ENRUTAMIENTO INTELIGENTE CORREGIDO
-    # Va a Ollama si es saludo inicial CON contexto visual, o si se fuerza localmente
-    if (is_basic_interaction and contexto_visual) or forzar_local:
-        print("Routing directly to Local Ollama...")
+    # Si se fuerza localmente desde el código, vamos directo a Ollama
+    if forzar_local:
+        print("Routing directly to Local Ollama (Forced)...")
         return call_local_ollama(messages)
 
-    # Si ya estamos en conversación libre (no hay contexto_visual), viaja directo a Groq
+    # PRIORIDAD 1: Nube (Groq). Es más rápido, no gasta RAM de la Pi y entiende mejor los nombres y halagos.
     if has_internet():
         try:
-            print("Routing to Cloud (Groq) for advanced history/culture question...")
+            print("Routing to Cloud (Groq)...")
             headers = {
                 "Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}",
                 "Content-Type": "application/json"
@@ -107,9 +107,10 @@ def cerebro_hero(user_question, db, contexto_visual=None, forzar_local=False):
             if cloud_response.status_code == 200:
                 return cloud_response.json()["choices"][0]["message"]["content"]
             else:
-                print(f"Cloud error: {cloud_response.text}")
+                print(f"Cloud error ({cloud_response.status_code}): {cloud_response.text}")
         except Exception as e:
-            print(f"Cloud failed: {e}")
+            print(f"Cloud failed due to -> {e}")
 
-    # Fallback final si no hay internet
+    # PRIORIDAD 2: Fallback final a Ollama SOLO si no hay internet o si Groq falló
+    print("No internet or Cloud failed. Falling back to Local Ollama...")
     return call_local_ollama(messages)
