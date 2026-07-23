@@ -272,7 +272,7 @@ class HeroUI:
         return False
 
     def init_sdl_opengl(self):
-        os.environ["SDL_VIDEODRIVER"] = "x11"
+        if sys.platform == 'linux': os.environ["SDL_VIDEODRIVER"] = "x11"
         if not SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD):
             print(f"Error al inicializar SDL: {SDL_GetError().decode()}", file=sys.stderr)
             return False
