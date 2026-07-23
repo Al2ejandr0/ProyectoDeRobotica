@@ -158,15 +158,6 @@ def main():
             if faces_detected:
                 last_detection_time = now
                 
-                # --- Lógica de centrado del Servo ---
-                if movement_state == "STOPPED_INTERACTION":
-                    face_x = getattr(ui, 'face_x', 0.5) 
-                    tolerancia = 0.07 
-                    if face_x < (0.5 - tolerancia):
-                        send_command('L')
-                    elif face_x > (0.5 + tolerancia):
-                        send_command('R')
-                
                 if state == "ANALYZING" and now > search_block_time:
                     if can_stop and movement_state == "MOVING":
                         print("Face detected: Sending Stop command (D).")

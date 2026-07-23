@@ -89,7 +89,7 @@ def cerebro_hero(user_question, db, contexto_visual=None, forzar_local=False):
             }
             payload = {
                 # Modelo 100% gratuito y muy potente en OpenRouter:
-                "model": "google/gemma-4-31b-it:free",
+                "model": "cohere/north-mini-code:free",
                 "messages": messages
             }
             cloud_response = requests.post(
