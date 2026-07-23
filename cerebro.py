@@ -3,9 +3,11 @@ import requests
 from dotenv import load_dotenv
 from BaseDeDatos import Search_Information
 
+# Cargar variables de entorno desde api_key.env
 load_dotenv(os.path.dirname(__file__) + "/api_key.env")
 
 def call_local_ollama(messages):
+    """Respaldo local usando Ollama si la nube no está disponible"""
     try:
         print("Iniciando respaldo local (Ollama - qwen2.5:0.5b)...")
         payload_local = {
@@ -29,7 +31,7 @@ def call_local_ollama(messages):
 def cerebro_hero(user_question, db, contexto_visual=None, forzar_local=False):
     min_question = user_question.lower().strip()
     
-    # 1. Identificamos interacciones básicas estrictas (saludos, chistes)
+    # 1. Identificar interacciones básicas (saludos, chistes)
     is_basic_interaction = any(word in min_question for word in [
         "chiste", "broma", "cuentame algo gracioso", "hola", "saludos", "buenos dias", 
         "como estas", "me llamo", "mi nombre es", "soy", "un placer", "que tal"
@@ -43,14 +45,14 @@ def cerebro_hero(user_question, db, contexto_visual=None, forzar_local=False):
         print(f"Buscando en Base de Datos para: '{user_question}'")
         found_data = Search_Information(user_question, db)
 
-    # 3. Configuración de la personalidad de Hero
+    # 3. Personalidad de Hero
     instructions = (
         "Eres Hero, un robot asistente cultural interactivo de Venezuela. "
         "Responde siempre de forma muy breve (máximo dos oraciones), amigable, con la chispa, el ingenio y el carisma del hablar venezolano. "
         "No uses léxico de otros países como che, solo palabras venezolanas."
     )
     
-    # 4. INYECCIÓN DEL HALAGO REAL (Si aplica en este turno)
+    # 4. Inyección del contexto visual
     if contexto_visual:
         instructions += (
             f" OBSERVACIÓN VISUAL REAL: El usuario que tienes en frente tiene: '{contexto_visual}'. "
@@ -60,50 +62,54 @@ def cerebro_hero(user_question, db, contexto_visual=None, forzar_local=False):
         )
 
     if found_data:
-        instructions += f" Usa estrictamente estos datos del museo para responder: {found_data}"
+        instructions += f" Usa strictly estos datos del museo para responder: {found_data}"
     
     messages = [
         {"role": "system", "content": instructions},
         {"role": "user", "content": user_question}
     ]
     
-    # 5. ENRUTAMIENTO DIRECTO A GROQ
-    # Solo si se especifica explícitamente desde el código irá directo a local
+    # 5. Enrutamiento directo a local si se fuerza explícitamente
     if forzar_local:
         print("Routing directly to Local Ollama (Forced)...")
         return call_local_ollama(messages)
 
-    # PRIORIDAD 1: Intentar Groq (Nube) directamente
-    api_key = os.getenv("GROQ_API_KEY")
+    # PRIORIDAD 1: OpenRouter (Nube)
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    
     if api_key:
         try:
-            print("Routing to Cloud (Groq)...")
+            print("Routing to Cloud (OpenRouter)...")
             headers = {
                 "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                # Encabezados opcionales recomendados por OpenRouter:
+                "HTTP-Referer": "https://github.com/HeroRobot", 
+                "X-Title": "Hero The Robot"
             }
             payload = {
-                "model": "llama-3.3-70b-versatile",
+                # Modelo 100% gratuito y muy potente en OpenRouter:
+                "model": "meta-llama/llama-3.3-70b-instruct:free",
                 "messages": messages
             }
             cloud_response = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
+                "https://openrouter.ai/api/v1/chat/completions",
                 headers=headers,
                 json=payload,
-                timeout=8  # Ajustado a 8s para responder rápido o descartar si no hay internet
+                timeout=10
             )
             
             if cloud_response.status_code == 200:
                 return cloud_response.json()["choices"][0]["message"]["content"]
             else:
-                print(f"Error en API Groq ({cloud_response.status_code}): {cloud_response.text}")
+                print(f"Error en API OpenRouter ({cloud_response.status_code}): {cloud_response.text}")
         except requests.exceptions.RequestException as e:
-            print(f"Groq offline o sin conexión a internet -> {e}")
+            print(f"OpenRouter offline o sin conexión -> {e}")
         except Exception as e:
-            print(f"Error inesperado con Groq -> {e}")
+            print(f"Error inesperado con OpenRouter -> {e}")
     else:
-        print("Advertencia: No se encontró GROQ_API_KEY en api_key.env")
+        print("Advertencia: No se encontró OPENROUTER_API_KEY en api_key.env")
 
-    # PRIORIDAD 2: Fallback únicamente si la nube no respondió o no hay red
-    print("No hay internet o Groq falló. Usando Ollama Local como respaldo...")
+    # PRIORIDAD 2: Fallback a Ollama si la nube falla o no hay clave
+    print("Usando Ollama Local como respaldo...")
     return call_local_ollama(messages)
