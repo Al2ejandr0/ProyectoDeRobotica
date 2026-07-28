@@ -74,41 +74,38 @@ def cerebro_hero(user_question, db, contexto_visual=None, forzar_local=False):
         print("Routing directly to Local Ollama (Forced)...")
         return call_local_ollama(messages)
 
-    # PRIORIDAD 1: OpenRouter (Nube)
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    # PRIORIDAD 1: Ollama (Nube)
+    api_key = os.getenv("OLLAMA_API_KEY")
     
     if api_key:
         try:
-            print("Routing to Cloud (OpenRouter)...")
+            print("Routing to Cloud (Ollama)...")
             headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                # Encabezados opcionales recomendados por OpenRouter:
-                "HTTP-Referer": "https://github.com/HeroRobot", 
-                "X-Title": "Hero The Robot"
+                "Authorization": f"Bearer {api_key}"
             }
             payload = {
-                # Modelo 100% gratuito y muy potente en OpenRouter:
-                "model": "cohere/north-mini-code:free",
-                "messages": messages
+                # Modelo 100% gratuito y muy potente en Ollama:
+                "model": "gemma4:31b",
+                "messages": messages,
+                "stream": False
             }
             cloud_response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
+                "https://ollama.com/api/chat",
                 headers=headers,
                 json=payload,
                 timeout=10
             )
             
             if cloud_response.status_code == 200:
-                return cloud_response.json()["choices"][0]["message"]["content"]
+                return cloud_response.json()["message"]["content"]
             else:
-                print(f"Error en API OpenRouter ({cloud_response.status_code}): {cloud_response.text}")
+                print(f"Error en API Ollama ({cloud_response.status_code}): {cloud_response.text}")
         except requests.exceptions.RequestException as e:
-            print(f"OpenRouter offline o sin conexión -> {e}")
+            print(f"Ollama offline o sin conexión -> {e}")
         except Exception as e:
-            print(f"Error inesperado con OpenRouter -> {e}")
+            print(f"Error inesperado con Ollama -> {e}")
     else:
-        print("Advertencia: No se encontró OPENROUTER_API_KEY en api_key.env")
+        print("Advertencia: No se encontró Ollama_API_KEY en api_key.env")
 
     # PRIORIDAD 2: Fallback a Ollama si la nube falla o no hay clave
     print("Usando Ollama Local como respaldo...")
