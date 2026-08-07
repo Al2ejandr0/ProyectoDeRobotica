@@ -8,6 +8,7 @@ import os
 import cv2
 from VISION import DetectorRostro
 import random as rd
+import math
 
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 600
@@ -29,7 +30,10 @@ class HeroUI:
         self.cap = cv2.VideoCapture(0)
         self.detector = DetectorRostro()
         self.faces_detected = None
-        self.gesture_detected = None
+        self.current_pos = 0.0, 0.0, 0.0
+        self.prev_pos = 0.0, 0.0, 0.0
+        self.delta_pos = 0.0, 0.0, 0.0
+        self.mod_delta_pos = 0
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 300)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 176)
         self.rendercam = False
@@ -395,7 +399,11 @@ class HeroUI:
 
         if self.cap.isOpened():
             self.rendercam, cam_frame = self.cap.read(0)
-            self.faces_detected, self.gesture_detected = self.detector.procesar_frame(cam_frame)
+            self.prev_pos = self.current_pos
+            self.faces_detected, self.current_pos = self.detector.procesar_frame(cam_frame)
+            self.delta_pos = self.current_pos[0] - self.prev_pos[0], self.current_pos[1] - self.prev_pos[1], self.current_pos[2] - self.prev_pos[2]
+            self.mod_delta_pos = math.sqrt(self.delta_pos[0] ** 2 + self.delta_pos[1] ** 2 + self.delta_pos[2] ** 2)
+            
             cam_h, cam_w, _ = cam_frame.shape
             ratio = cam_w / cam_h
             glBindTexture(GL_TEXTURE_2D, self.cam_texture)

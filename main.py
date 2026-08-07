@@ -33,7 +33,7 @@ def obtener_halago_real(frame_compartido):
             print("Vision: Frame compartido no disponible aún.")
             return "una energía excelente"
             
-        frame = frame_compartido.copy()
+        frame = frame_compartido
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         alto, ancho, _ = frame.shape
         
@@ -152,24 +152,27 @@ def main():
                 continue
                 
             faces_detected = ui.faces_detected
-            gesture_detected = ui.gesture_detected
             now = time.time()
 
             if faces_detected:
                 last_detection_time = now
                 
                 if state == "ANALYZING" and now > search_block_time:
-                    if can_stop and movement_state == "MOVING":
-                        print("Face detected: Sending Stop command (D).")
-                        send_command('D') 
-                        movement_state = "STOPPED_INTERACTION"
+                    if movement_state == "MOVING":
+                        if can_stop:
+                            print("Face detected: Sending Stop command (D).")
+                            send_command('D') 
+                            movement_state = "STOPPED_INTERACTION"
+                        elif ui.mod_delta_pos > 100:
+                            print("CAN STOP!")
+                            can_stop = True
                     if analysis_start_time == 0: 
                         analysis_start_time = now
                     if (now - analysis_start_time) >= 2 and not voz_y_oido.ai_speaking:
                         
                         # Extraemos el frame de la UI
-                        frame_actual = getattr(ui, 'last_frame', None)
-                        contexto_actual = obtener_halago_real(frame_actual)
+                        frame_actual = ui.cap.read(0)
+                        contexto_actual = obtener_halago_real(frame_actual[1])
                         
                         speak_and_wait("Hola mucho gusto, soy Hero, ¿te gustaría conversar conmigo?")
                         state = "WAITING_ACCEPTANCE"
@@ -177,14 +180,13 @@ def main():
                         ui.set_ui_data("status", "Esperando Respuesta")
             else:
                 can_stop = True
-                if movement_state == "STOPPED_INTERACTION":
-                    if (now - last_detection_time) > WAIT_THRESHOLD:
-                        print("No faces for a long time: Sending Advance command (A).")
-                        send_command('A') 
-                        movement_state = "MOVING"
-                        state = "ANALYZING"
-                        contexto_actual = None 
-                        ui.set_ui_data("status", "En Movimiento")
+                if movement_state == "STOPPED_INTERACTION" and (now - last_detection_time) > WAIT_THRESHOLD:
+                    print("No faces for a long time: Sending Advance command (A).")
+                    send_command('A') 
+                    movement_state = "MOVING"
+                    state = "ANALYZING"
+                    contexto_actual = None 
+                    ui.set_ui_data("status", "En Movimiento")
 
             phrase = ""
             if not voz_y_oido.ai_speaking:
@@ -211,7 +213,7 @@ def main():
                     continue
                     
                 if state == "WAITING_ACCEPTANCE":
-                    if is_affirmative(phrase) or gesture_detected == "si":
+                    if is_affirmative(phrase):
                         speak_and_wait("¡Genial! ¿Cómo te llamas?")
                         state = "WAITING_NAME"
                         ui.set_ui_data("status", "Esperando Respuesta")

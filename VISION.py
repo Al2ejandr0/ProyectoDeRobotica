@@ -22,7 +22,7 @@ class DetectorRostro:
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.face_mesh.process(frame_rgb)
         
-        gesto = None
+        pos = 0.0, 0.0, 0.0
         rostro_detectado = False
 
         if results.multi_face_landmarks:
@@ -54,25 +54,6 @@ class DetectorRostro:
                     connection_drawing_spec=self.mp_drawing_styles.get_default_face_mesh_tesselation_style()
                 )
                 nariz = rostro_principal.landmark[1]
-                gesto = self.analizar_gesto(nariz.x, nariz.y)
+                pos = nariz.x * 32768, nariz.y * 32768, nariz.z * 32768
 
-        return rostro_detectado, gesto
-
-    def analizar_gesto(self, x, y):
-        # Prevención de salto fantasma por si otra persona se acerca de golpe
-        if self.history_positions:
-            ultima_x, ultima_y = self.history_positions[-1]
-            if abs(x - ultima_x) > 0.25 or abs(y - ultima_y) > 0.25:
-                self.history_positions.clear()
-
-        self.history_positions.append((x, y))
-        if len(self.history_positions) > 15: self.history_positions.pop(0)
-        if len(self.history_positions) < 15: return None
-
-        xs = [p[0] for p in self.history_positions]
-        ys = [p[1] for p in self.history_positions]
-        mov_x, mov_y = max(xs) - min(xs), max(ys) - min(ys)
-        
-        if mov_y > 0.05 and mov_y > mov_x: return "si"
-        if mov_x > 0.05 and mov_x > mov_y: return "no"
-        return None
+        return rostro_detectado, pos
