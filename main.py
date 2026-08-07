@@ -33,7 +33,7 @@ def obtener_halago_real(frame_compartido):
             print("Vision: Frame compartido no disponible aún.")
             return "una energía excelente"
             
-        frame = frame_compartido
+        frame = frame_compartido.copy()
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         alto, ancho, _ = frame.shape
         
@@ -127,6 +127,10 @@ def main():
     can_stop = True
     contexto_actual = None 
 
+    # --- VARIABLES PARA ACUMULACIÓN DE AUDIO Y TIEMPO DE SILENCIO ---
+    texto_acumulado = ""
+    ultimo_tiempo_voz = time.time()
+
     def speak_and_wait(text):
         ui.set_ui_data("status", "Hablando")
         if not text or len(text) < 2: 
@@ -152,6 +156,7 @@ def main():
                 continue
                 
             faces_detected = ui.faces_detected
+            gesture_detected = getattr(ui, 'gesture_detected', None)
             now = time.time()
 
             if faces_detected:
@@ -163,16 +168,22 @@ def main():
                             print("Face detected: Sending Stop command (D).")
                             send_command('D') 
                             movement_state = "STOPPED_INTERACTION"
-                        elif ui.mod_delta_pos > 100:
+                        elif getattr(ui, 'mod_delta_pos', 0) > 100:
                             print("CAN STOP!")
                             can_stop = True
+
                     if analysis_start_time == 0: 
                         analysis_start_time = now
+
                     if (now - analysis_start_time) >= 2 and not voz_y_oido.ai_speaking:
-                        
-                        # Extraemos el frame de la UI
-                        frame_actual = ui.cap.read(0)
-                        contexto_actual = obtener_halago_real(frame_actual[1])
+                        # Obtener frame de forma segura sin bloquear el hilo
+                        frame_actual = getattr(ui, 'last_frame', None)
+                        if frame_actual is None and hasattr(ui, 'cap') and ui.cap.isOpened():
+                            ret_cap, frame_cap = ui.cap.read()
+                            if ret_cap:
+                                frame_actual = frame_cap
+
+                        contexto_actual = obtener_halago_real(frame_actual)
                         
                         speak_and_wait("Hola mucho gusto, soy Hero, ¿te gustaría conversar conmigo?")
                         state = "WAITING_ACCEPTANCE"
@@ -188,16 +199,47 @@ def main():
                     contexto_actual = None 
                     ui.set_ui_data("status", "En Movimiento")
 
+            # =====================================================================
+            # CAPTURA CONTINUA DE AUDIO Y DETECCIÓN DE 2s DE SILENCIO
+            # =====================================================================
             phrase = ""
             if not voz_y_oido.ai_speaking:
                 if stream.get_read_available() > 0:
                     data = stream.read(2000, exception_on_overflow=False)
+                    
+                    # 1. Procesar waveform en Vosk continuamente
+                    oracion_terminada_por_vosk = rec.AcceptWaveform(data)
+                    
+                    # 2. Si hay energía de voz, actualizar temporizador de silencio
                     if voz_y_oido.clarity(data, umbral=300):
-                        if rec.AcceptWaveform(data):
-                            phrase = clean_text(json.loads(rec.Result()).get('text', ''))
-                            if phrase: 
-                                print(f"Heard: {phrase}")
-            
+                        ultimo_tiempo_voz = time.time()
+                        
+                    # 3. Concatenar fragmentos reconocidos
+                    if oracion_terminada_por_vosk:
+                        pedazo = clean_text(json.loads(rec.Result()).get('text', ''))
+                        if pedazo:
+                            texto_acumulado += " " + pedazo
+                            print(f"[Vosk capturó]: {pedazo}")
+
+                    # 4. Validar pausa de silencio continua
+                    parcial = clean_text(json.loads(rec.PartialResult()).get('partial', ''))
+                    if (texto_acumulado.strip() != "" or parcial != ""):
+                        if (time.time() - ultimo_tiempo_voz) > 2.0:
+                            phrase = f"{texto_acumulado} {parcial}".strip()
+                            print(f"-> PREGUNTA COMPLETA ENVIADA AL CEREBRO: {phrase}")
+                            
+                            # Limpieza de variables para la siguiente entrada
+                            texto_acumulado = ""
+                            rec.Reset()
+                            ultimo_tiempo_voz = time.time()
+            else:
+                # Si Hero está hablando, congelamos contadores
+                ultimo_tiempo_voz = time.time()
+                texto_acumulado = ""
+
+            # =====================================================================
+            # PROCESAMIENTO DE COMANDOS Y RESPUESTAS
+            # =====================================================================
             if phrase != "":
                 ui.set_ui_data("status", "Pensando")
                 if any(word in phrase for word in ["adios", "chao", "hasta luego", "no quiero mas"]):
@@ -213,7 +255,7 @@ def main():
                     continue
                     
                 if state == "WAITING_ACCEPTANCE":
-                    if is_affirmative(phrase):
+                    if is_affirmative(phrase) or gesture_detected == "si":
                         speak_and_wait("¡Genial! ¿Cómo te llamas?")
                         state = "WAITING_NAME"
                         ui.set_ui_data("status", "Esperando Respuesta")
@@ -232,7 +274,6 @@ def main():
                     parts = phrase.split()
                     user_name = parts[-1] if parts else "amigo"
                     
-                    # Llamada a Groq/Ollama con contexto visual
                     try:
                         respuesta_saludo = cerebro_hero(phrase, db, contexto_visual=contexto_actual)
                     except Exception as e:
@@ -241,7 +282,6 @@ def main():
                         
                     speak_and_wait(respuesta_saludo)
                     
-                    # Limpieza de memoria visual para el resto de la interacción
                     contexto_actual = None 
                     state = "FREE_CONVERSATION"
                     ui.set_ui_data("status", "Esperando Respuesta")
@@ -256,7 +296,6 @@ def main():
                     speak_and_wait(response)
                     ui.set_ui_data("status", "Esperando Respuesta")
             
-            # Evita saturar el procesador de la Pi
             time.sleep(0.01)
 
     finally:
