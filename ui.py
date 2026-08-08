@@ -13,6 +13,9 @@ import math
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 600
 
+def lerp(a: float, b: float, t: float) -> float:
+    return (1 - t) * a + t * b
+
 class HeroUI:
     def __init__(self):
         self.running = True
@@ -47,7 +50,9 @@ class HeroUI:
         self.eyes = None
         self.eyes_w = 0
         self.eyes_h = 0
-        self.eyes_offset = 0
+        self.eyes_offset_x = 0
+        self.eyes_offset_y = 0
+        self.eyes_speed = 0.25
         self.eyes_opened = True
         self.eyes_timer = 0
         self.eyes_max_time = rd.randint(90, 180)
@@ -393,7 +398,7 @@ class HeroUI:
             if self.eyes_bg:
                 self.render_texture(self.eyes_bg, SCREEN_WIDTH / 2 - self.eyes_bg_w / 2, SCREEN_HEIGHT / 2 - self.eyes_bg_h / 2, self.eyes_bg_w, self.eyes_bg_h)
             if self.eyes and self.eyes_opened:
-                self.render_texture(self.eyes, SCREEN_WIDTH / 2 - self.eyes_w / 2 + self.eyes_offset, SCREEN_HEIGHT / 2 - self.eyes_h / 2, self.eyes_w, self.eyes_h)
+                self.render_texture(self.eyes, SCREEN_WIDTH / 2 - self.eyes_w / 2 + self.eyes_offset_x, SCREEN_HEIGHT / 2 - self.eyes_h / 2 + self.eyes_offset_y, self.eyes_w, self.eyes_h)
             if self.eyes_closed and not self.eyes_opened:
                 self.render_texture(self.eyes_closed, SCREEN_WIDTH / 2 - self.eyes_closed_w / 2, SCREEN_HEIGHT / 2 - self.eyes_closed_h / 2, self.eyes_closed_w, self.eyes_closed_h)
 
@@ -403,6 +408,12 @@ class HeroUI:
             self.faces_detected, self.current_pos = self.detector.procesar_frame(cam_frame)
             self.delta_pos = self.current_pos[0] - self.prev_pos[0], self.current_pos[1] - self.prev_pos[1], self.current_pos[2] - self.prev_pos[2]
             self.mod_delta_pos = math.sqrt(self.delta_pos[0] ** 2 + self.delta_pos[1] ** 2 + self.delta_pos[2] ** 2)
+            if self.faces_detected:
+                self.eyes_offset_x = lerp(self.eyes_offset_x, -self.current_pos[0] / 32768 * 16 + 8, self.eyes_speed)
+                self.eyes_offset_y = lerp(self.eyes_offset_y, self.current_pos[1] / 32768 * 16 - 8, self.eyes_speed)
+            else:
+                self.eyes_offset_x = lerp(self.eyes_offset_x, 0, self.eyes_speed)
+                self.eyes_offset_y = lerp(self.eyes_offset_y, 0, self.eyes_speed)
             
             cam_h, cam_w, _ = cam_frame.shape
             ratio = cam_w / cam_h
@@ -420,6 +431,9 @@ class HeroUI:
             )
             self.render_texture(self.cam_texture, SCREEN_WIDTH - self.camframe_size - 16, 16, self.camframe_size, self.camframe_size / ratio)
             glBindTexture(GL_TEXTURE_2D, 0)
+        else:
+            self.eyes_offset_x = lerp(self.eyes_offset_x, 0, self.eyes_speed)
+            self.eyes_offset_y = lerp(self.eyes_offset_y, 0, self.eyes_speed)
 
         SDL_GL_SwapWindow(self.window)
 

@@ -179,7 +179,7 @@ def main():
                         # Obtener frame de forma segura sin bloquear el hilo
                         frame_actual = getattr(ui, 'last_frame', None)
                         if frame_actual is None and hasattr(ui, 'cap') and ui.cap.isOpened():
-                            ret_cap, frame_cap = ui.cap.read()
+                            ret_cap, frame_cap = ui.cap.read(0)
                             if ret_cap:
                                 frame_actual = frame_cap
 
