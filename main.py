@@ -5,7 +5,8 @@ import numpy as np
 import random     
 import time
 import json
-import serial  
+import serial
+import sys
 
 from ui import HeroUI
 from cerebro import cerebro_hero
@@ -23,7 +24,24 @@ def limpiar_texto(texto):
 # =====================================================================
 # FUNCIÓN DE VISIÓN: DETECTA GORRAS/SOMBREROS Y COLOR DE ROPA
 # =====================================================================
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+if sys.platform == 'linux':
+    def cargar_cascade():
+        rutas = [
+            cv2.data.haarcascades + 'haarcascade_frontalface_default.xml',
+            '/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml',
+            '/usr/share/opencv5/haarcascades/haarcascade_frontalface_default.xml',
+            '/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml',
+        ]
+        for ruta in rutas:
+            cascade = cv2.CascadeClassifier(ruta)
+            if not cascade.empty():
+                print(f"Visión: Haar Cascade cargado con éxito desde: {ruta}")
+                return cascade
+        print("ADVERTENCIA: No se pudo cargar el Haar Cascade. Se omitirá detección de gorra.")
+        return cv2.CascadeClassifier()
+
+    face_cascade = cargar_cascade()
+else: face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
 def obtener_halago_real(frame_compartido):
     """Analiza la imagen de manera segura sin bloquear el hardware"""
@@ -211,8 +229,12 @@ def main():
                     oracion_terminada_por_vosk = rec.AcceptWaveform(data)
                     
                     # 2. Si hay energía de voz, actualizar temporizador de silencio
-                    if voz_y_oido.clarity(data, umbral=300):
-                        ultimo_tiempo_voz = time.time()
+                    if sys.platform == 'linux':
+                        if voz_y_oido.clarity(data, umbral=500):
+                            ultimo_tiempo_voz = time.time()
+                    else:
+                        if voz_y_oido.clarity(data, umbral=300):
+                            ultimo_tiempo_voz = time.time()
                         
                     # 3. Concatenar fragmentos reconocidos
                     if oracion_terminada_por_vosk:
@@ -220,6 +242,9 @@ def main():
                         if pedazo:
                             texto_acumulado += " " + pedazo
                             print(f"[Vosk capturó]: {pedazo}")
+                            phrase = texto_acumulado.strip()
+                            texto_acumulado = ""
+                            rec.Reset()
 
                     # 4. Validar pausa de silencio continua
                     parcial = clean_text(json.loads(rec.PartialResult()).get('partial', ''))
