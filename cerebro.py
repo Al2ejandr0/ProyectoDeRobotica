@@ -37,86 +37,75 @@ def cerebro_hero(user_question, db, contexto_visual=None, forzar_local=False):
         "como estas", "me llamo", "mi nombre es", "soy", "un placer", "que tal"
     ])
 
-    # 2. Control de búsqueda en Base de Datos (RAG)
+    # 2. Control de búsqueda en Base de Datos
     if is_basic_interaction or contexto_visual:
         print("Interacción básica o saludo detectado. Omitiendo búsqueda en BD.")
         found_data = ""
     else:
         print(f"Buscando en Base de Datos para: '{user_question}'")
-        # Utilizamos tu función original de búsqueda
         found_data = Search_Information(user_question, db)
 
-    # 3. Construcción del "Super Prompt" (Personalidad + RAG)
+    # 3. Personalidad de Hero
     instructions = (
         "Eres Hero, un robot asistente cultural interactivo de Venezuela. "
-        "Responde siempre de forma muy breve (máximo dos oraciones), amigable, con la chispa, el ingenio y el carisma del hablar venezolano. "
+        "Responde siempre de forma muy breve, amigable, con la chispa, el ingenio y el carisma del hablar venezolano. "
         "No uses léxico de otros países como che, solo palabras venezolanas."
     )
     
     # 4. Inyección del contexto visual
     if contexto_visual:
         instructions += (
-            f" \nOBSERVACIÓN VISUAL REAL: El usuario que tienes en frente tiene: '{contexto_visual}'. "
+            f" OBSERVACIÓN VISUAL REAL: El usuario que tienes en frente tiene: '{contexto_visual}'. "
             f"Incorpora de forma muy natural, espontánea y alegre un cumplido corto sobre esto "
-            f"en tu respuesta (por ejemplo: ¡Qué fino el estilo de tu gorra!). "
+            f"en tu respuesta (por ejemplo: ¡Qué fino el estilo de tu gorra! o ¡Esa camisa te queda genial!). "
             f"Dilo con el flow, el respeto y la calidez de un pana venezolano."
         )
 
-    # 5. Inyección de Datos Locales
     if found_data:
-        instructions += (
-            f" \nINFORMACIÓN IMPORTANTE DEL LUGAR: Usa estrictamente estos datos "
-            f"para responder a la pregunta de forma precisa: {found_data}"
-        )
-    elif not is_basic_interaction and not contexto_visual:
-        instructions += (
-            " \nSi te hacen una pregunta específica sobre historia o el lugar y no tienes información al respecto, "
-            "invítalos amablemente a preguntarte sobre otro tema histórico para no inventar datos."
-        )
+        instructions += f" Usa strictly estos datos del museo para responder: {found_data}"
     
     messages = [
         {"role": "system", "content": instructions},
         {"role": "user", "content": user_question}
     ]
     
-    # 6. Enrutamiento directo a local si se fuerza explícitamente
+    # 5. Enrutamiento directo a local si se fuerza explícitamente
     if forzar_local:
         print("Routing directly to Local Ollama (Forced)...")
         return call_local_ollama(messages)
 
-    # PRIORIDAD 1: Nube (Asegúrate de que este endpoint y API Key sean de un proveedor real en la nube)
-    api_key = os.getenv("OLLAMA_API_KEY") 
+    # PRIORIDAD 1: Ollama (Nube)
+    api_key = os.getenv("OLLAMA_API_KEY")
     
     if api_key:
         try:
-            print("Routing to Cloud...")
+            print("Routing to Cloud (Ollama)...")
             headers = {
                 "Authorization": f"Bearer {api_key}"
             }
             payload = {
-                "model": "gemma4:31b", 
+                # Modelo 100% gratuito y muy potente en Ollama:
+                "model": "gemma4:31b",
                 "messages": messages,
                 "stream": False
             }
-            # OJO: Cambia esta URL si usas Groq, OpenAI o un servidor tuyo.
             cloud_response = requests.post(
-                "https://api.tu-proveedor-nube.com/v1/chat/completions", 
+                "https://ollama.com/api/chat",
                 headers=headers,
                 json=payload,
                 timeout=10
             )
             
             if cloud_response.status_code == 200:
-                # La estructura del JSON depende del proveedor, asegúrate de que sea compatible
-                return cloud_response.json()["choices"][0]["message"]["content"]
+                return cloud_response.json()["message"]["content"]
             else:
-                print(f"Error en API Nube ({cloud_response.status_code}): {cloud_response.text}")
+                print(f"Error en API Ollama ({cloud_response.status_code}): {cloud_response.text}")
         except requests.exceptions.RequestException as e:
-            print(f"Nube offline o sin conexión -> {e}")
+            print(f"Ollama offline o sin conexión -> {e}")
         except Exception as e:
-            print(f"Error inesperado con la nube -> {e}")
+            print(f"Error inesperado con Ollama -> {e}")
     else:
-        print("Advertencia: No se encontró API_KEY en api_key.env")
+        print("Advertencia: No se encontró Ollama_API_KEY en api_key.env")
 
     # PRIORIDAD 2: Fallback a Ollama si la nube falla o no hay clave
     print("Usando Ollama Local como respaldo...")

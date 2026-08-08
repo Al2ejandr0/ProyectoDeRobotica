@@ -17,7 +17,7 @@ ui.running = True
 
 def limpiar_texto(texto):
     """Limpia el Markdown y caracteres especiales para que la voz sea natural"""
-    texto = re.sub(r'[\*\#\-]', '', texto)
+    texto = re.sub(r'[\*\#\-]', ' ', texto)
     texto = re.sub(r'\n+', ' ', texto)
     return " ".join(texto.split())
 
