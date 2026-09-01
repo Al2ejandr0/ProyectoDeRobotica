@@ -32,6 +32,7 @@ def Search_Information(question, db):
         results = db.similarity_search(question, k=3)
         if not results:
             return ""
+        print("\n".join([doc.page_content for doc in results]))
         return "\n".join([doc.page_content for doc in results])
     except Exception as e:
         print(f"Internal error in similarity_search: {e}")
