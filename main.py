@@ -11,19 +11,17 @@ import sys
 from ui import HeroUI
 from cerebro import cerebro_hero
 
-# Inicialización de la Interfaz
 ui = HeroUI()
 ui.running = True
+""" Inicialización de la Interfaz"""
 
 def limpiar_texto(texto):
-    """Limpia el Markdown y caracteres especiales para que la voz sea natural"""
     texto = re.sub(r'[\*\#\-]', ' ', texto)
     texto = re.sub(r'\n+', ' ', texto)
     return " ".join(texto.split())
+"""Limpia el Markdown y caracteres especiales para que la voz sea natural"""
 
-# =====================================================================
-# FUNCIÓN DE VISIÓN: DETECTA GORRAS/SOMBREROS Y COLOR DE ROPA
-# =====================================================================
+
 if sys.platform == 'linux':
     def cargar_cascade():
         rutas = [
@@ -42,11 +40,12 @@ if sys.platform == 'linux':
 
     face_cascade = cargar_cascade()
 else: face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+"""Carga el clasificador para detectar rostros (usado luego como referencia para ubicar la cabeza)"""
+
 
 def obtener_halago_real(frame_compartido):
-    """Analiza la imagen de manera segura sin bloquear el hardware"""
+    """Analiza el frame visual de manera segura para generar un cumplido sobre la vestimenta o accesorios"""
     try:
-        # SALVAVIDAS: Si la interfaz aún no ha guardado un frame, evita el crash
         if frame_compartido is None:
             print("Vision: Frame compartido no disponible aún.")
             return "una energía excelente"
@@ -54,12 +53,10 @@ def obtener_halago_real(frame_compartido):
         frame = frame_compartido.copy()
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         alto, ancho, _ = frame.shape
-        
-        # Buscamos el rostro para usarlo de referencia espacial
         rostros = face_cascade.detectMultiScale(gray, 1.1, 4)
+        """Se busca un rostro para usarlo de referencia espacial"""
         
         for (x, y, w, h) in rostros:
-            # 1. INTENTAR DETECTAR GORRA
             ymin, ymax = max(0, int(y - (h * 0.25))), y
             xmin, xmax = x + int(w * 0.2), x + int(w * 0.8)
             if ymin < y: 
@@ -74,8 +71,8 @@ def obtener_halago_real(frame_compartido):
                             "esa gorra o accesorio en tu cabeza que te da tremendo flow",
                             "el gran estilo de lo que llevas en la cabeza hoy"
                         ])
+                    """Intento de detección de gorra"""
 
-        # 2. FALLBACK: SI NO HAY GORRA, ANALIZAMOS EL COLOR DE LA CAMISA
         ymin_c, ymax_c = int(alto * 0.7), int(alto * 0.9)
         xmin_c, xmax_c = int(ancho * 0.4), int(ancho * 0.6)
         muestra_camisa = frame[ymin_c:ymax_c, xmin_c:xmax_c]
@@ -96,7 +93,8 @@ def obtener_halago_real(frame_compartido):
                 return "ese tono verde de tu ropa que se ve sumamente fresco"
             elif 85 <= hue < 140:
                 return "ese color azul de tu ropa que te combina excelente"
-        
+        """Si no se detecta o analiza gorra, se recorta una región central del torso para determinar el color dominante de la camisa/ropa analizando su tono, saturación y brillo en el espacio de color HSV"""
+
         return "el excelente estilo de la ropa que cargas hoy"
         
     except Exception as e:
@@ -116,6 +114,7 @@ def main():
     except Exception as e:
         print(f"Arduino connection skipped: {e}")
         arduino = None
+        """Conexión serial con la MegaPi"""
 
     def send_command(com):
         if arduino: 
@@ -145,9 +144,10 @@ def main():
     can_stop = True
     contexto_actual = None 
 
-    # --- VARIABLES PARA ACUMULACIÓN DE AUDIO Y TIEMPO DE SILENCIO ---
+
     texto_acumulado = ""
     ultimo_tiempo_voz = time.time()
+    """Variables para la acumulación de audio y tiempo de silencio"""
 
     def speak_and_wait(text):
         ui.set_ui_data("status", "Hablando")
@@ -170,7 +170,7 @@ def main():
         while ui.running:
             ret = ui.rendercam
             if not ret: 
-                time.sleep(0.03) # Evita consumo innecesario de CPU
+                time.sleep(0.03)
                 continue
                 
             faces_detected = ui.faces_detected
@@ -194,12 +194,12 @@ def main():
                         analysis_start_time = now
 
                     if (now - analysis_start_time) >= 2 and not voz_y_oido.ai_speaking:
-                        # Obtener frame de forma segura sin bloquear el hilo
                         frame_actual = getattr(ui, 'last_frame', None)
                         if frame_actual is None and hasattr(ui, 'cap') and ui.cap.isOpened():
                             ret_cap, frame_cap = ui.cap.read(0)
                             if ret_cap:
                                 frame_actual = frame_cap
+                                """Obtener frame de forma segura sin bloquear el hilo"""
 
                         contexto_actual = obtener_halago_real(frame_actual)
                         
@@ -217,26 +217,23 @@ def main():
                     contexto_actual = None 
                     ui.set_ui_data("status", "En Movimiento")
 
-            # =====================================================================
-            # CAPTURA CONTINUA DE AUDIO Y DETECCIÓN DE 2s DE SILENCIO
-            # =====================================================================
             phrase = ""
             if not voz_y_oido.ai_speaking:
                 if stream.get_read_available() > 0:
                     data = stream.read(2000, exception_on_overflow=False)
+                    """Captura continua de audio y detección de 2 segundos de silencio"""
                     
-                    # 1. Procesar waveform en Vosk continuamente
                     oracion_terminada_por_vosk = rec.AcceptWaveform(data)
-                    
-                    # 2. Si hay energía de voz, actualizar temporizador de silencio
+                    """Procesar waveform en Vosk continuamente"""
+                
                     if sys.platform == 'linux':
                         if voz_y_oido.clarity(data, umbral=500):
                             ultimo_tiempo_voz = time.time()
                     else:
                         if voz_y_oido.clarity(data, umbral=300):
                             ultimo_tiempo_voz = time.time()
+                            """Si hay energía de voz, actualizar temporizador de silencio"""
                         
-                    # 3. Concatenar fragmentos reconocidos
                     if oracion_terminada_por_vosk:
                         pedazo = clean_text(json.loads(rec.Result()).get('text', ''))
                         if pedazo:
@@ -245,26 +242,25 @@ def main():
                             phrase = texto_acumulado.strip()
                             texto_acumulado = ""
                             rec.Reset()
+                            """Concatenar fragmentos reconocidos"""
 
-                    # 4. Validar pausa de silencio continua
                     parcial = clean_text(json.loads(rec.PartialResult()).get('partial', ''))
                     if (texto_acumulado.strip() != "" or parcial != ""):
                         if (time.time() - ultimo_tiempo_voz) > 2.0:
                             phrase = f"{texto_acumulado} {parcial}".strip()
                             print(f"-> PREGUNTA COMPLETA ENVIADA AL CEREBRO: {phrase}")
+                            """Validar pausa de silencio continua"""
                             
-                            # Limpieza de variables para la siguiente entrada
                             texto_acumulado = ""
                             rec.Reset()
                             ultimo_tiempo_voz = time.time()
+                            """Limpieza de variables para la siguiente entrada"""
             else:
-                # Si Hero está hablando, congelamos contadores
                 ultimo_tiempo_voz = time.time()
                 texto_acumulado = ""
+                """Hero está hablando, congelamos contadores"""
 
-            # =====================================================================
-            # PROCESAMIENTO DE COMANDOS Y RESPUESTAS
-            # =====================================================================
+                """PROCESAMIENTO DE COMANDOS Y RESPUESTAS"""
             if phrase != "":
                 ui.set_ui_data("status", "Pensando")
                 if any(word in phrase for word in ["adios", "chao", "hasta luego", "no quiero mas"]):

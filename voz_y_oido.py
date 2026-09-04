@@ -7,15 +7,15 @@ from piper import PiperVoice
 
 MODEL = "piper/es_ES-davefx-medium.onnx"
 CONFIG = "piper/es_ES-davefx-medium.onnx.json"
-"""Path configuration for the TTS (Text-to-Speech) engine"""
+"""Configuración de ruta para el motor de texto a voz"""
 
 ai_speaking = False
-"""Global state flags for controlling audio flow and thread synchronization"""
+"""Indicadores de estado globales para controlar el flujo de audio y la sincronización de hilos"""
 
 p = pyaudio.PyAudio()
 stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=4000)
 voice = PiperVoice.load(MODEL, config_path=CONFIG)
-"""Load the Piper voice model for high-quality speech synthesis"""
+"""Carga el modelo de voz Piper para una síntesis de voz de alta calidad"""
 
 def clarity(data, umbral=200):
     audio_data = np.frombuffer(data, dtype=np.int16).astype(np.float32)
@@ -23,7 +23,7 @@ def clarity(data, umbral=200):
     if mean_square <= 0: return False
     rms = np.sqrt(mean_square)
     return rms > umbral
-"""Calculates RMS energy to filter out low volume background noise"""
+"""Calcula la energía RMS para filtrar el ruido de fondo de bajo volumen"""
 
 def speak(text):
     global ai_speaking 
@@ -39,18 +39,18 @@ def speak(text):
         ai_speaking = False
         stream.start_stream()
         print("Hero terminó de hablar.")
-    """Synthesizes text into audio and plays it through the speakers"""
+    """Sintetiza el texto en audio y lo reproduce a través de los altavoces"""
 
 def clean_text(text):
     if not text: return ""
     return ''.join(c for c in unicodedata.normalize('NFD', text)
                    if unicodedata.category(c) != 'Mn').lower()
-"""Normalizes text by removing accents and converting to lowercase"""
+"""Normaliza el texto eliminando los acentos y convirtiéndolo a minúsculas"""
 
 def initialize_hearing():
     model = vosk.Model("model")
     rec = vosk.KaldiRecognizer(model, 16000)
-    """Initialize the speech-to-text model"""
-    """Configuring the audio input flow from the microphone"""
+    """Inicializar el modelo de conversión de voz a texto"""
+    """Configurar el flujo de entrada de audio desde el micrófono"""
 
     return rec
