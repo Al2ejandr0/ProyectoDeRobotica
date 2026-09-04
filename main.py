@@ -21,7 +21,6 @@ def limpiar_texto(texto):
     return " ".join(texto.split())
 """Limpia el Markdown y caracteres especiales para que la voz sea natural"""
 
-
 if sys.platform == 'linux':
     def cargar_cascade():
         rutas = [
