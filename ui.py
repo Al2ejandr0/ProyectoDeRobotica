@@ -16,7 +16,9 @@ SCREEN_HEIGHT = 600
 def lerp(a: float, b: float, t: float) -> float:
     return (1 - t) * a + t * b
 
+"""Clase principal para la interfaz de usuario de Hero"""
 class HeroUI:
+    """Función constructora que inicializa todas las variables necesarias"""
     def __init__(self):
         self.running = True
         self.window = None
@@ -74,6 +76,7 @@ class HeroUI:
         self.mouth_closed_w = 0
         self.mouth_closed_h = 0
 
+    """Función para cargar una textura en la memoria RAM para su posterior utilización"""
     def load_texture(self, path = str()):
         try:
             img = Image.open(path).convert("RGBA")
@@ -89,6 +92,7 @@ class HeroUI:
             print(f"Error: {e}", file=sys.stderr)
             return None, 0, 0
 
+    """Función para mostrar en pantalla una textura previamente cargada en memoria RAM"""
     def render_texture(self, texture_id, x, y, w, h):
         glPushMatrix()
         glEnable(GL_TEXTURE_2D)
@@ -114,6 +118,7 @@ class HeroUI:
         glDisable(GL_TEXTURE_2D)
         glPopMatrix()
 
+    """Función para mostrar en pantalla un texto en una posición dada y con un color dado"""
     def render_text_to_opengl(self, text, x, y, color):
         if not self.font:
             return
@@ -168,6 +173,7 @@ class HeroUI:
         glDeleteTextures(1, byref(texture_id))
         SDL_DestroySurface(text_surface)
 
+    """Función para mostrar en pantalla un boton con sus características dadas"""
     def render_button(self, button_id, text, x, y, w, h, bg_color, text_color):
         glDisable(GL_TEXTURE_2D)
         glDisable(GL_DEPTH_TEST)
@@ -250,6 +256,7 @@ class HeroUI:
         glDeleteTextures(1, byref(texture_id))
         SDL_DestroySurface(text_surface)
 
+    """Actualiza el estado de un boton dado en las coordenadas dadas"""
     def update_button_state(self, event, button_id, x, y, w, h):
         if event.type in (SDL_EVENT_MOUSE_BUTTON_DOWN, SDL_EVENT_FINGER_DOWN):
             if event.type == SDL_EVENT_MOUSE_BUTTON_DOWN and event.button.button == SDL_BUTTON_LEFT:
@@ -280,6 +287,7 @@ class HeroUI:
                     return True
         return False
 
+    """Inicializa las api's de SDL (Para la gestión de eventos) y OpenGL (Para el renderizado de elementos en pantalla)"""
     def init_sdl_opengl(self):
         if sys.platform == 'linux': os.environ["SDL_VIDEODRIVER"] = "x11"
         if not SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD):
@@ -340,12 +348,15 @@ class HeroUI:
 
         return True
 
+    """Establece un dato dado en una posición de arreglo dada"""
     def set_ui_data(self, data_name : str, data):
         self.robot_data[data_name] = data
 
+    """Establece la página que se está viendo actualmente"""
     def set_ui_page(self, page : str):
         self.current_page = page
 
+    """Administra los eventos de botones o de acciones en especifico"""
     def handle_events(self):
         if self.eyes_opened:
             if self.eyes_timer <= self.eyes_max_time: self.eyes_timer += 1
@@ -375,6 +386,7 @@ class HeroUI:
                     print("BACK_CLICKED")
                     self.running = False
 
+    """Dibuja todos los elementos en pantalla"""
     def render(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
@@ -437,6 +449,7 @@ class HeroUI:
 
         SDL_GL_SwapWindow(self.window)
 
+    """Bucle principal de la interfaz de usuario"""
     def run(self):
         if not self.init_sdl_opengl():
             return
