@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
     knowledge_files = list[str]()
     for file in os.listdir(os.path.join(path, "INFO")):
-        if file.endswith(".txt"): knowledge_files.append(file)
+        if file.endswith(".txt"): knowledge_files.append(os.path.join(path, "INFO", file))
     
     print("Iniciando carga masiva de conocimiento para Hero (Modo Offline)")
     print("-" * 60)
