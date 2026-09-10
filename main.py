@@ -319,9 +319,8 @@ def main():
             time.sleep(0.01)
 
     finally:
-        if hasattr(ui, 'cap') and ui.cap.isOpened():
-            ui.cap.release()
-        if arduino: 
+        ui.running = False
+        if arduino:
             arduino.close()
         print("System shut down correctly.")
 
@@ -330,4 +329,3 @@ main_thread.daemon = True
 main_thread.start()
 
 ui.run()
-quit(0)

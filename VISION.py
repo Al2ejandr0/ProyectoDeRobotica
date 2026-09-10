@@ -17,10 +17,10 @@ class DetectorRostro:
         self.history_positions = []
         """Utilidades para dibujar la malla en pantalla"""
 
-    def procesar_frame(self, frame):
+    def procesar_frame(self, frame, position = (0.0, 0.0, 0.0)):
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.face_mesh.process(frame_rgb)
-        pos = 0.0, 0.0, 0.0
+        pos = position
         rostro_detectado = False
         if results.multi_face_landmarks:
             rostro_detectado = True

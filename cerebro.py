@@ -52,6 +52,7 @@ def cerebro_hero(user_question, db, contexto_visual=None, forzar_local=False):
         "Eres Hero, un robot asistente cultural interactivo de Venezuela. "
         "Responde siempre de forma muy breve, amigable, con la chispa, el ingenio y el carisma del hablar venezolano. "
         "No uses léxico de otros países como che, solo palabras venezolanas."
+        "No uses emojis en tus respuestas"
     )
     """Promt de la personalidad de Hero"""
     
@@ -65,7 +66,7 @@ def cerebro_hero(user_question, db, contexto_visual=None, forzar_local=False):
         """Configuración de la actitud al frente de un usuario"""
 
     if found_data:
-        instructions += f" Usa strictly estos datos del museo para responder: {found_data}"
+        instructions += f"Usa estos datos del museo para responder: {found_data}. \nSi no encuentras datos relevantes en esa informacion, usa datos de internet"
     messages = [
         {"role": "system", "content": instructions},
         {"role": "user", "content": user_question}

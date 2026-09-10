@@ -417,7 +417,7 @@ class HeroUI:
         if self.cap.isOpened():
             self.rendercam, cam_frame = self.cap.read(0)
             self.prev_pos = self.current_pos
-            self.faces_detected, self.current_pos = self.detector.procesar_frame(cam_frame)
+            self.faces_detected, self.current_pos = self.detector.procesar_frame(cam_frame, self.current_pos)
             self.delta_pos = self.current_pos[0] - self.prev_pos[0], self.current_pos[1] - self.prev_pos[1], self.current_pos[2] - self.prev_pos[2]
             self.mod_delta_pos = math.sqrt(self.delta_pos[0] ** 2 + self.delta_pos[1] ** 2 + self.delta_pos[2] ** 2)
             if self.faces_detected:
@@ -458,6 +458,9 @@ class HeroUI:
             self.handle_events()
             self.render()
             SDL_Delay(16)
+
+        if self.cap.isOpened:
+            self.cap.release()
 
         if self.font:
             TTF_CloseFont(self.font)

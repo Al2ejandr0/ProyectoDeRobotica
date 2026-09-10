@@ -33,11 +33,13 @@ def LoadAndTrainFile(ruta_txt, db):
     loader = TextLoader(ruta_txt, encoding="utf-8")
     documents = loader.load()
     """Evita errores o confusiones con los acentos"""
-    
+
+    separators = [" ", "\n---"]
+    for i in range(1, 10): separators.append("\n" * i)
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000, 
         chunk_overlap=150,
-        separators=["\n\n\n", "\n\n", "\n---", "\n", " "]
+        separators=separators
     )
     fragments = text_splitter.split_documents(documents)
     """Divide el texto en fragmentos para la búsqueda semántica"""
