@@ -63,18 +63,9 @@ if __name__ == "__main__":
     db = initialize_db()
     """Lee y detecta el archivo .txt"""
 
-    knowledge_files = [
-        os.path.join(path, "INFO", "curiosidades.txt"),
-        os.path.join(path, "INFO", "Leyendas.txt"),
-        os.path.join(path, "INFO", "personajes.txt"),
-        os.path.join(path, "INFO", "Naturaleza.txt"),
-        os.path.join(path, "INFO", "entretenimiento.txt"),
-        os.path.join(path, "INFO", "Cultura(1).txt"),
-        os.path.join(path, "INFO", "proposito.txt"),
-        os.path.join(path, "INFO", "integrantes.txt"),
-        os.path.join(path, "INFO", "Info.txt"),
-        os.path.join(path, "INFO", "batalla de carabobo.txt")
-    ]
+    knowledge_files = list[str]()
+    for file in os.listdir(os.path.join(path, "INFO")):
+        if file.endswith(".txt"): knowledge_files.append(file)
     
     print("Iniciando carga masiva de conocimiento para Hero (Modo Offline)")
     print("-" * 60)
