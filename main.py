@@ -209,6 +209,7 @@ def main():
             else:
                 can_stop = True
                 if movement_state == "STOPPED_INTERACTION" and (now - last_detection_time) > WAIT_THRESHOLD:
+                    cerebro_hero.reiniciar_historial()
                     print("No faces for a long time: Sending Advance command (A).")
                     send_command('A') 
                     movement_state = "MOVING"
@@ -263,6 +264,7 @@ def main():
             if phrase != "":
                 ui.set_ui_data("status", "Pensando")
                 if any(word in phrase for word in ["adios", "chao", "hasta luego", "no quiero mas"]):
+                    cerebro_hero.reiniciar_historial()
                     speak_and_wait("Entendido, fue un gusto conversar contigo. ¡Hasta pronto!")
                     state = "ANALYZING"
                     search_block_time = now + 10
