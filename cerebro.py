@@ -36,7 +36,7 @@ def call_local_ollama(messages):
         local_response = requests.post(
             "http://127.0.0.1:11434/api/chat",
             json=payload_local,
-            timeout=12
+            timeout=30
         )
         """Conexión al modelo local"""
 
@@ -112,7 +112,7 @@ def cerebro_hero(user_question, db, contexto_visual=None, forzar_local=False):
                     "https://ollama.com/api/chat",
                     headers=headers,
                     json=payload,
-                    timeout=30
+                    timeout=15
                 )
                 
                 if cloud_response.status_code == 200:
