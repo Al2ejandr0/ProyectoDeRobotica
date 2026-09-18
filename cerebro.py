@@ -36,7 +36,7 @@ def call_local_ollama(messages):
         local_response = requests.post(
             "http://127.0.0.1:11434/api/chat",
             json=payload_local,
-            timeout=30
+            timeout=45
         )
         """Conexión al modelo local"""
 
