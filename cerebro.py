@@ -112,7 +112,7 @@ def cerebro_hero(user_question, db, contexto_visual=None, forzar_local=False):
                     "https://ollama.com/api/chat",
                     headers=headers,
                     json=payload,
-                    timeout=15
+                    timeout=30
                 )
                 
                 if cloud_response.status_code == 200:
