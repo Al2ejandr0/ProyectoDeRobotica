@@ -42,7 +42,6 @@ if sys.platform == 'linux':
 else: face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 """Carga el clasificador para detectar rostros (usado luego como referencia para ubicar la cabeza)"""
 
-
 def obtener_halago_real(frame_compartido):
     """Analiza el frame visual de manera segura para generar un cumplido sobre la vestimenta o accesorios"""
     try:
@@ -65,7 +64,8 @@ def obtener_halago_real(frame_compartido):
                     hsv_gorra = cv2.cvtColor(muestra_gorra, cv2.COLOR_BGR2HSV)
                     promedio_gorra = np.mean(hsv_gorra, axis=(0, 1))
                     
-                    if promedio_gorra[1] > 90: 
+                    # Ajustado: Saturación > 60 y Brillo > 40 para filtrar sombras en la cabeza
+                    if promedio_gorra[1] > 60 and promedio_gorra[2] > 40: 
                         print("Vision: ¡Gorra o accesorio en la cabeza detectado!")
                         return random.choice([
                             "esa gorra o accesorio en tu cabeza que te da tremendo flow",
@@ -73,8 +73,8 @@ def obtener_halago_real(frame_compartido):
                         ])
                     """Intento de detección de gorra"""
 
-        ymin_c, ymax_c = int(alto * 0.7), int(alto * 0.9)
-        xmin_c, xmax_c = int(ancho * 0.4), int(ancho * 0.6)
+        ymin_c, ymax_c = int(alto * 0.65), int(alto * 0.85)
+        xmin_c, xmax_c = int(ancho * 0.35), int(ancho * 0.65)
         muestra_camisa = frame[ymin_c:ymax_c, xmin_c:xmax_c]
         
         if muestra_camisa.size > 0:
@@ -83,16 +83,29 @@ def obtener_halago_real(frame_compartido):
             
             hue, sat, val = promedio_hsv[0], promedio_hsv[1], promedio_hsv[2]
             
-            if sat < 45 and val > 180:
-                return "esa camisa blanca que transmite una vibra impecable"
-            elif val < 55:
+            # 1. Colores sin Tono (Blanco, Negro, Gris)
+            if val < 50:
                 return "tu outfit oscuro que te da un toque de elegancia serio"
-            elif (0 <= hue < 10) or (160 <= hue <= 180):
+            elif sat < 35 and val > 160:
+                return "esa camisa blanca que transmite una vibra impecable"
+            elif sat < 35:
+                return "ese tono gris neutro de tu ropa que se ve súper moderno"
+
+            # 2. Colores Cromáticos (Basados en el rango OpenCV 0-179)
+            if (0 <= hue < 10) or (170 <= hue <= 179):
                 return "ese color rojo intenso de tu ropa que demuestra mucha seguridad"
+            elif 10 <= hue < 25:
+                return "ese tono anaranjado de tu ropa que transmite una energía increíble"
+            elif 25 <= hue < 35:
+                return "ese color amarillo de tu ropa que resalta muchísimo y se ve genial"
             elif 35 <= hue < 85:
                 return "ese tono verde de tu ropa que se ve sumamente fresco"
-            elif 85 <= hue < 140:
+            elif 85 <= hue < 130:
                 return "ese color azul de tu ropa que te combina excelente"
+            elif 130 <= hue < 150:
+                return "ese tono morado de tu ropa que te da un estilo único"
+            elif 150 <= hue < 170:
+                return "ese color rosado de tu ropa que se te ve fenomenal"
         """Si no se detecta o analiza gorra, se recorta una región central del torso para determinar el color dominante de la camisa/ropa analizando su tono, saturación y brillo en el espacio de color HSV"""
 
         return "el excelente estilo de la ropa que cargas hoy"
